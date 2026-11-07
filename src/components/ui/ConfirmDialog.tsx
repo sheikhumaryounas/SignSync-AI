@@ -1,6 +1,6 @@
 import React from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
-import { palette, radius, spacing } from '../../theme';
+import { palette, radius, spacing, useDirection } from '../../theme';
 import { AppText } from './AppText';
 import { Button } from './Button';
 
@@ -28,6 +28,7 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const { row } = useDirection();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel} statusBarTranslucent>
       <Pressable style={styles.scrim} onPress={onCancel} accessibilityLabel={cancelLabel}>
@@ -42,7 +43,7 @@ export function ConfirmDialog({
               </AppText>
             ) : null}
           </View>
-          <View style={styles.actions}>
+          <View style={[styles.actions, row]}>
             <Button title={cancelLabel} variant="ghost" onPress={onCancel} style={styles.action} />
             <Button
               title={confirmLabel}
@@ -62,6 +63,6 @@ const styles = StyleSheet.create({
   scrim: { flex: 1, backgroundColor: palette.scrim, justifyContent: 'center', padding: spacing.xxl },
   card: { backgroundColor: palette.surface, borderRadius: radius.xl, padding: spacing.xl, gap: spacing.xl },
   text: { gap: spacing.sm },
-  actions: { flexDirection: 'row', gap: spacing.md },
+  actions: { gap: spacing.md },
   action: { flex: 1 },
 });

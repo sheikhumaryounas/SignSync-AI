@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { palette, radius, spacing } from '../../theme';
+import { palette, radius, spacing, useDirection } from '../../theme';
 import { AppText } from './AppText';
 import { IconName } from './icons';
 
@@ -16,8 +16,9 @@ const tones: Record<NoticeTone, { bg: string; fg: string; icon: IconName }> = {
 
 export function Notice({ message, tone = 'info' }: { message: string; tone?: NoticeTone }) {
   const t = tones[tone];
+  const { row } = useDirection();
   return (
-    <View style={[styles.box, { backgroundColor: t.bg }]} accessibilityRole="alert">
+    <View style={[styles.box, row, { backgroundColor: t.bg }]} accessibilityRole="alert">
       <Ionicons name={t.icon} size={15} color={t.fg} style={styles.icon} />
       <AppText variant="caption" color={t.fg} style={styles.text}>
         {message}
@@ -27,7 +28,7 @@ export function Notice({ message, tone = 'info' }: { message: string; tone?: Not
 }
 
 const styles = StyleSheet.create({
-  box: { flexDirection: 'row', gap: spacing.sm, padding: spacing.md - 2, borderRadius: radius.sm + 1, alignItems: 'flex-start' },
+  box: { gap: spacing.sm, padding: spacing.md - 2, borderRadius: radius.sm + 1, alignItems: 'flex-start' },
   icon: { marginTop: 1 },
   text: { flex: 1 },
 });

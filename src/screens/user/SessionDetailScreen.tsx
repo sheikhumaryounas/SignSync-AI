@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { fonts, palette, radius, shadow, spacing } from '../../theme';
+import { fonts, palette, radius, shadow, spacing, useDirection } from '../../theme';
 import { AppText, Chip, ConfirmDialog, EmptyState, IconButton, Screen } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { usePreferences } from '../../context/PreferencesContext';
@@ -18,6 +18,7 @@ export default function SessionDetailScreen({ navigation, route }: Props) {
   const { prefs } = usePreferences();
   const { notify } = useFeedback();
   const { t, lang } = useI18n();
+  const { row, back } = useDirection();
   const [session, setSession] = useState<SessionDetail | null>(null);
   const [missing, setMissing] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -48,8 +49,8 @@ export default function SessionDetailScreen({ navigation, route }: Props) {
 
   return (
     <Screen edges={['top', 'bottom']}>
-      <View style={styles.head}>
-        <IconButton icon="chevron-back" onPress={navigation.goBack} accessibilityLabel={t('common.back')} />
+      <View style={[styles.head, row]}>
+        <IconButton icon={back} onPress={navigation.goBack} accessibilityLabel={t('common.back')} />
         {session ? (
           <IconButton
             icon="trash-outline"
@@ -68,7 +69,7 @@ export default function SessionDetailScreen({ navigation, route }: Props) {
             <AppText variant="title" accessibilityRole="header">
               {session.title}
             </AppText>
-            <View style={styles.chips}>
+            <View style={[styles.chips, row]}>
               <Chip label={t(`mod.${session.modality}` as StringKey)} tone="teal" />
               <Chip label={whenLabel(session.startedAt, t, lang)} />
               <Chip label={durationLabel(session.startedAt, session.endedAt)} />
@@ -97,16 +98,17 @@ export default function SessionDetailScreen({ navigation, route }: Props) {
 
 function Bubble({ record, outputLanguage }: { record: TranslationRecord; outputLanguage: OutputLanguage }) {
   const { t } = useI18n();
+  const { row, isRTL, start, end } = useDirection();
   const mine = record.speaker === 'self';
   const lines = linesFor(outputLanguage, record.outputEn, record.outputUr);
   const who = `${mine ? t('session.you') : record.speakerName} · ${t(`session.via.${record.inputMode}` as StringKey)}`;
   return (
-    <View style={[styles.bubble, mine ? styles.mine : styles.theirs]}>
+    <View style={[styles.bubble, mine ? styles.mine : styles.theirs, { alignSelf: mine ? start : end }, mine === isRTL ? styles.tailRight : styles.tailLeft]}>
       <AppText variant="label" color={mine ? palette.muted : palette.onNavyMuted}>
         {who}
       </AppText>
       {record.signSequence.length ? (
-        <View style={styles.tokens}>
+        <View style={[styles.tokens, row]}>
           {record.signSequence.map((s, i) => (
             <View key={`${s.sign}-${i}`} style={[styles.token, mine ? null : styles.tokenOnNavy]}>
               <AppText style={[styles.tokenText, { color: mine ? palette.tealInk : palette.tealOnNavy }]}>
@@ -137,30 +139,27 @@ function Bubble({ record, outputLanguage }: { record: TranslationRecord; outputL
 
 const styles = StyleSheet.create({
   head: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   titleBlock: { gap: spacing.sm },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  chips: { flexWrap: 'wrap', gap: spacing.sm },
   bubble: {
     maxWidth: '88%',
     borderRadius: radius.lg,
     padding: spacing.md,
     gap: 6,
   },
+  tailLeft: { borderTopLeftRadius: 5 },
+  tailRight: { borderTopRightRadius: 5 },
   mine: {
-    alignSelf: 'flex-start',
     backgroundColor: palette.surface,
-    borderTopLeftRadius: 5,
     boxShadow: shadow.card,
   },
   theirs: {
-    alignSelf: 'flex-end',
     backgroundColor: palette.navy,
-    borderTopRightRadius: 5,
   },
-  tokens: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
+  tokens: { flexWrap: 'wrap', gap: 4 },
   token: {
     backgroundColor: palette.tealSoft,
     borderRadius: 6,
@@ -170,8 +169,8 @@ const styles = StyleSheet.create({
   tokenOnNavy: { backgroundColor: 'rgba(0,179,196,0.18)' },
   tokenText: {
     fontFamily: fonts.medium,
-    fontSize: 10.5,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 16,
     letterSpacing: 0.3,
   },
 });

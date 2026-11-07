@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View, ViewStyle } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { fonts, palette, spacing } from '../../theme';
+import { fonts, palette, spacing, useDirection } from '../../theme';
 import { AppText, Button, Card, ConfirmDialog, IconBadge, IconName, Screen, StatusPill } from '../../components/ui';
 import { LanguageToggle } from '../../components/LanguageToggle';
 import { useAuth } from '../../context/AuthContext';
@@ -21,6 +21,7 @@ export default function ProfileScreen() {
   const navigation = useNavigation<any>();
   const { user, logout } = useAuth();
   const { t, lang } = useI18n();
+  const { row: dirRow, forward } = useDirection();
   const [confirming, setConfirming] = useState(false);
 
   if (!user) return null;
@@ -38,7 +39,7 @@ export default function ProfileScreen() {
         {t('profile.title')}
       </AppText>
 
-      <Card style={styles.identity}>
+      <Card style={[styles.identity, dirRow as ViewStyle]}>
         <View style={styles.avatar} accessibilityElementsHidden importantForAccessibility="no">
           <AppText style={styles.avatarText}>{initials(user.name)}</AppText>
         </View>
@@ -49,7 +50,7 @@ export default function ProfileScreen() {
           <AppText variant="caption" numberOfLines={1}>
             {user.email}
           </AppText>
-          <View style={styles.pillRow}>
+          <View style={[styles.pillRow, dirRow]}>
             <StatusPill label={t(`profile.role.${user.role}` as StringKey)} tone="info" />
           </View>
         </View>
@@ -64,16 +65,16 @@ export default function ProfileScreen() {
             key={r.label}
             onPress={r.onPress}
             accessibilityRole="button"
-            style={({ pressed }) => [styles.row, i > 0 ? styles.divider : null, pressed ? { opacity: 0.7 } : null]}
+            style={({ pressed }) => [styles.row, dirRow, i > 0 ? styles.divider : null, pressed ? { opacity: 0.7 } : null]}
           >
             <IconBadge icon={r.icon} size="sm" tone="navy" />
             <AppText variant="heading" style={styles.flex}>
               {t(r.label)}
             </AppText>
-            <Ionicons name="chevron-forward" size={16} color={palette.muted} />
+            <Ionicons name={forward} size={16} color={palette.muted} />
           </Pressable>
         ))}
-        <View style={[styles.row, styles.divider]}>
+        <View style={[styles.row, dirRow, styles.divider]}>
           <IconBadge icon="language-outline" size="sm" tone="navy" />
           <AppText variant="heading" style={styles.flex}>
             {t('profile.language')}
@@ -100,11 +101,11 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  identity: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg, padding: spacing.lg },
+  identity: { alignItems: 'center', gap: spacing.lg, padding: spacing.lg },
   avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: palette.navy, alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontFamily: fonts.bold, fontSize: 20, lineHeight: 24, color: palette.white },
-  pillRow: { flexDirection: 'row', marginTop: spacing.xs },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.md, paddingVertical: spacing.md, minHeight: 56 },
+  pillRow: { marginTop: spacing.xs },
+  row: { alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.md, paddingVertical: spacing.md, minHeight: 56 },
   divider: { borderTopWidth: 1, borderTopColor: palette.line2 },
   flex: { flex: 1, minWidth: 0 },
 });

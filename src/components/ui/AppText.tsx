@@ -1,6 +1,6 @@
 import React, { useContext } from 'react';
 import { StyleSheet, Text, TextProps, TextStyle } from 'react-native';
-import { fonts, palette, TextScaleContext, type, TextVariant } from '../../theme';
+import { DirectionContext, fonts, palette, TextScaleContext, type, TextVariant } from '../../theme';
 
 export interface AppTextProps extends TextProps {
   variant?: TextVariant;
@@ -31,7 +31,8 @@ function containsUrdu(children: React.ReactNode): boolean {
 // height that script needs. Callers pass translated strings and never pick fonts themselves.
 function urduStyle(variant: TextVariant, scale: number, align?: TextStyle['textAlign']): TextStyle {
   const base = StyleSheet.flatten(type[variant]);
-  const size = (base.fontSize ?? 14) * scale;
+  // Nastaliq reads smaller than Latin at the same point size, so small text gets a floor.
+  const size = Math.max(base?.fontSize ?? 14, 13.5) * scale;
   return {
     fontFamily: strongVariants.includes(variant) ? fonts.urduSemibold : fonts.urdu,
     fontSize: variant === 'label' ? size + 2 : size,
@@ -45,6 +46,7 @@ function urduStyle(variant: TextVariant, scale: number, align?: TextStyle['textA
 
 export function AppText({ variant = 'body', color, align, style, children, ...rest }: AppTextProps) {
   const scale = useContext(TextScaleContext);
+  const isRTL = useContext(DirectionContext);
   const isUrduVariant = variant === 'urdu' || variant === 'urduSm';
   const autoUrdu = !isUrduVariant && containsUrdu(children);
   const urdu = autoUrdu ? urduStyle(variant, scale, align) : null;
@@ -60,7 +62,7 @@ export function AppText({ variant = 'body', color, align, style, children, ...re
         scaled,
         { color: color ?? defaultColor[variant] ?? palette.ink },
         urdu,
-        align ? { textAlign: align } : null,
+        align ? { textAlign: align } : isRTL ? { textAlign: 'right' } : null,
         style,
         // A caller's Latin fontFamily must never win over Nastaliq for Urdu text.
         urdu ? { fontFamily: urdu.fontFamily } : null,

@@ -73,7 +73,7 @@ export default function VocabularyScreen() {
         data={rows}
         keyExtractor={(v) => v.id}
         contentContainerStyle={styles.list}
-        ListEmptyComponent={list ? <EmptyState icon="book-outline" title={t('vocab.empty')} message={t('history.noResultsMsg')} /> : null}
+        ListEmptyComponent={list ? <EmptyState icon="book-outline" title={t('vocab.empty')} message={t('history.noResultsMsg')} /> : undefined}
         renderItem={({ item }) => (
           <Card onPress={() => setSheet({ open: true, entry: item })} style={styles.row} accessibilityLabel={`${item.nameEn}, ${t(`status.${item.status}` as StringKey)}`}>
             <View style={styles.flex}>

@@ -1,671 +1,267 @@
-import React, { useState } from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-  Alert,
-} from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { KeyboardAvoidingView, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { colors } from '../../theme';
+import { palette, radius, shadow, spacing, useDirection } from '../../theme';
 import { RootStackParamList, SignVocabularyItem } from '../../types';
+import { AppText, Button, Chip, IconBadge, IconButton, Input, SegmentedControl } from '../../components/ui';
 import { usePreview } from '../../context/PreviewContext';
+import { useFeedback } from '../../context/FeedbackContext';
+import { useI18n } from '../../i18n';
 import { HeaderBar } from '../../components/preview/HeaderBar';
 import { SignAvatarComponent } from '../../components/preview/SignAvatarComponent';
-import { AudioWaveformVisualizer } from '../../components/preview/AudioWaveformVisualizer';
-import { TouchFeedback } from '../../components/preview/TouchFeedback';
-import { mapTextToSignSequence, correctSignSequence } from '../../services/preview/aiEngine';
+import { correctSignSequence, mapTextToSignSequence, signName, signNameEn } from '../../services/preview/aiEngine';
+import { isUrduText, linesFor, timeLabel } from '../../utils/format';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'BidirectionalChat'>;
+type Side = 'signer' | 'speaker';
 
 interface ChatTurn {
   id: string;
-  sender: 'deaf' | 'hearing';
+  side: Side;
   textUrdu: string;
   textEnglish: string;
-  timestamp: string;
+  at: string;
 }
 
+const minutesAgo = (n: number) => new Date(Date.now() - n * 60000).toISOString();
+
+const seedTurns = (): ChatTurn[] => [
+  { id: 'seed1', side: 'signer', textUrdu: 'السلام علیکم! مجھے ڈاکٹر سے ملنا ہے۔', textEnglish: 'Assalam-o-Alaikum! I want to meet the doctor.', at: minutesAgo(3) },
+  { id: 'seed2', side: 'speaker', textUrdu: 'وعلیکم السلام! ڈاکٹر صاحب کمرہ نمبر 4 میں موجود ہیں۔', textEnglish: 'Wa-Alaikum-Assalam! The doctor is in Room 4.', at: minutesAgo(2) },
+  { id: 'seed3', side: 'signer', textUrdu: 'شکریہ، کیا دوا بھی وہیں ملے گی؟', textEnglish: 'Thank you. Will I get medicine there too?', at: minutesAgo(1) },
+];
+
+const SAMPLE_SPEECH = {
+  ur: 'براہ کرم تشریف رکھیں، آپ کی دوا پانچ منٹ میں تیار ہو جائے گی۔',
+  en: 'Please take a seat. Your medicine will be ready in five minutes.',
+};
+
 export default function BidirectionalChatScreen({ navigation }: Props) {
-  const { preferences, vocabulary, addSession, speakText, theme, isDark } = usePreview();
+  const { preferences, vocabulary, addSession, speakText } = usePreview();
+  const { notify } = useFeedback();
+  const { t, lang } = useI18n();
+  const { row, start, end, isRTL } = useDirection();
+  const openedAt = useRef(Date.now());
+  const scroller = useRef<React.ComponentRef<typeof ScrollView>>(null);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const [view, setView] = useState<'chat' | 'guide'>('chat');
+  const [side, setSide] = useState<Side>('signer');
+  const [status, setStatus] = useState<'idle' | 'signing' | 'listening'>('idle');
+  const [draft, setDraft] = useState('');
+  const [turns, setTurns] = useState<ChatTurn[]>(seedTurns);
+  const [guideSigns, setGuideSigns] = useState<SignVocabularyItem[]>(() => vocabulary.slice(0, 3));
 
-  const [activeView, setActiveView] = useState<'chat' | 'avatar'>('chat');
-  const [isMicActive, setIsMicActive] = useState(false);
-  const [isDeafTyping, setIsDeafTyping] = useState(false);
-  const [hearingText, setHearingText] = useState('');
-  const [messages, setMessages] = useState<ChatTurn[]>([
-    {
-      id: 'msg_1',
-      sender: 'deaf',
-      textUrdu: 'السلام علیکم! مجھے ڈاکٹر سے ملنا ہے۔',
-      textEnglish: 'Assalam-o-Alaikum! I want to meet the doctor.',
-      timestamp: '11:40 AM',
+  useEffect(
+    () => () => {
+      timers.current.forEach(clearTimeout);
     },
-    {
-      id: 'msg_2',
-      sender: 'hearing',
-      textUrdu: 'وعلیکم السلام! ڈاکٹر صاحب کمرہ نمبر 4 میں موجود ہیں۔',
-      textEnglish: 'Wa-Alaikum-Assalam! The doctor is present in Room 4.',
-      timestamp: '11:41 AM',
-    },
-    {
-      id: 'msg_3',
-      sender: 'deaf',
-      textUrdu: 'شکریہ، کیا دوا بھی وہیں ملے گی؟',
-      textEnglish: 'Thank you, will I get medicine there too?',
-      timestamp: '11:42 AM',
-    },
-  ]);
-
-  const [currentAvatarSigns, setCurrentAvatarSigns] = useState<SignVocabularyItem[]>(
-    vocabulary.slice(0, 3)
+    []
   );
 
-  const handleSendDeafSign = (sign: SignVocabularyItem) => {
-    setIsDeafTyping(true);
-    setTimeout(() => {
-      setIsDeafTyping(false);
-      const tokens = [sign.signNameEnglish.split('/')[0].trim()];
-      const corrected = correctSignSequence(tokens, 'bilingual');
-
-      const newMsg: ChatTurn = {
-        id: `msg_${Date.now()}`,
-        sender: 'deaf',
-        textUrdu: corrected.urdu,
-        textEnglish: corrected.english,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-
-      setMessages(prev => [...prev, newMsg]);
-
-      if (preferences.audioFeedback) {
-        speakText(corrected.urdu);
-      }
-    }, 600);
+  const addTurn = (turn: Omit<ChatTurn, 'id' | 'at'>) => {
+    setTurns((prev) => [...prev, { ...turn, id: `turn_${Date.now()}`, at: new Date().toISOString() }]);
   };
 
-  const handleSendHearingMessage = (customText?: string) => {
-    const textToSend = customText || hearingText;
-    if (!textToSend.trim()) return;
-
-    const { supportedSigns } = mapTextToSignSequence(textToSend);
-    if (supportedSigns.length > 0) {
-      setCurrentAvatarSigns(supportedSigns);
-    }
-
-    const newMsg: ChatTurn = {
-      id: `msg_${Date.now()}`,
-      sender: 'hearing',
-      textUrdu: textToSend,
-      textEnglish: textToSend,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
-
-    setMessages(prev => [...prev, newMsg]);
-    setHearingText('');
-  };
-
-  const handleToggleMic = () => {
-    if (isMicActive) {
-      setIsMicActive(false);
-    } else {
-      setIsMicActive(true);
+  const sendSign = (sign: SignVocabularyItem) => {
+    setStatus('signing');
+    timers.current.push(
       setTimeout(() => {
-        setIsMicActive(false);
-        handleSendHearingMessage('برائے مہربانی یہاں تشریف رکھیں، دوا پانچ منٹ میں تیار ہو جائے گی۔');
-      }, 2200);
-    }
+        const corrected = correctSignSequence([signNameEn(sign)]);
+        addTurn({ side: 'signer', textUrdu: corrected.urdu, textEnglish: corrected.english });
+        speakText(preferences.outputLanguage === 'english' ? corrected.english : corrected.urdu, { auto: true });
+        setStatus('idle');
+      }, 500)
+    );
   };
 
-  const handleSaveConversation = () => {
+  const sendText = () => {
+    const text = draft.trim();
+    if (!text) return;
+    addTurn({ side: 'speaker', textUrdu: text, textEnglish: text });
+    const { supportedSigns } = mapTextToSignSequence(text);
+    if (supportedSigns.length > 0) setGuideSigns(supportedSigns);
+    setDraft('');
+  };
+
+  // There is no real speech recognition yet: the microphone stands in a sample sentence.
+  const simulateSpeech = () => {
+    setStatus('listening');
+    timers.current.push(
+      setTimeout(() => {
+        addTurn({ side: 'speaker', textUrdu: SAMPLE_SPEECH.ur, textEnglish: SAMPLE_SPEECH.en });
+        setGuideSigns(mapTextToSignSequence(SAMPLE_SPEECH.en).supportedSigns);
+        setStatus('idle');
+      }, 1800)
+    );
+  };
+
+  const onSave = () => {
+    const label = (s: Side) => (s === 'signer' ? t('chat.signer') : t('chat.speaker'));
     addSession({
       userId: preferences.userId,
-      title: `2-Way Live Talk (${messages.length} exchanges)`,
+      title: `${t('home.modeChat')} (${turns.length})`,
       modality: 'bidirectional',
-      inputText: `Transcript: ${messages.length} messages`,
-      outputTextUrdu: messages.map(m => `[${m.sender === 'deaf' ? 'Deaf' : 'Hearing'}]: ${m.textUrdu}`).join('\n'),
-      outputTextEnglish: messages.map(m => `[${m.sender === 'deaf' ? 'Deaf' : 'Hearing'}]: ${m.textEnglish}`).join('\n'),
-      signSequence: currentAvatarSigns.map(s => s.signNameEnglish.split('/')[0].trim()),
-      averageConfidence: 0.97,
-      duration: '3m 20s',
+      inputText: turns.map((m) => m.textEnglish).join(' / '),
+      outputTextUrdu: turns.map((m) => `${label(m.side)}: ${m.textUrdu}`).join('\n'),
+      outputTextEnglish: turns.map((m) => `${label(m.side)}: ${m.textEnglish}`).join('\n'),
+      signSequence: guideSigns.map(signNameEn),
+      averageConfidence: 1,
+      duration: `${Math.max(1, Math.round((Date.now() - openedAt.current) / 1000))}s`,
       feedbackGiven: 'up',
     });
-
-    Alert.alert('Session Saved', 'Conversation recorded in Communication History.', [
-      { text: 'View History', onPress: () => navigation.navigate('Main', { screen: 'CommunicationHistory' }) },
-      { text: 'OK', style: 'cancel' },
-    ]);
+    notify({ tone: 'success', message: t('preview.saved') });
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <HeaderBar
-        title="2-Way Live Conversation"
-        subtitle="Deaf ↔ Hearing Real-Time Bridge"
-        showLiveBadge
-        onBack={() => navigation.goBack()}
-        rightAction={
-          <TouchFeedback
-            style={[styles.saveHeaderBtn, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border }]}
-            onPress={handleSaveConversation}
-          >
-            <Ionicons name="bookmark-outline" size={15} color={isDark ? colors.brandCyan : colors.brandNavy} style={{ marginRight: 4 }} />
-            <Text style={[styles.saveHeaderBtnText, { color: isDark ? '#FFFFFF' : colors.brandNavy }]}>Save</Text>
-          </TouchFeedback>
-        }
+        title={t('home.modeChat')}
+        onBack={navigation.goBack}
+        rightAction={<Button title={t('preview.save')} icon="bookmark-outline" variant="ghost" fullWidth={false} style={styles.save} onPress={onSave} />}
       />
-
-      {/* Segmented View Switcher */}
-      <View style={[styles.segmentBar, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-        <TouchFeedback
-          style={[styles.segmentBtn, activeView === 'chat' && [styles.segmentBtnActive, { backgroundColor: theme.surfaceSecondary }]]}
-          onPress={() => setActiveView('chat')}
-        >
-          <Ionicons
-            name="chatbubbles-outline"
-            size={16}
-            color={activeView === 'chat' ? (isDark ? colors.brandCyan : colors.brandNavy) : '#64748B'}
-            style={{ marginRight: 6 }}
+      <KeyboardAvoidingView style={styles.flex} behavior="padding">
+        <View style={styles.switcher}>
+          <SegmentedControl<'chat' | 'guide'>
+            value={view}
+            onChange={setView}
+            options={[
+              { value: 'chat', label: t('chat.messages', { n: turns.length }) },
+              { value: 'guide', label: t('chat.guide') },
+            ]}
           />
-          <Text style={[styles.segmentBtnText, activeView === 'chat' && [styles.segmentBtnTextActive, { color: isDark ? '#FFFFFF' : colors.brandNavy }]]}>
-            Live Dialogue ({messages.length})
-          </Text>
-        </TouchFeedback>
-
-        <TouchFeedback
-          style={[styles.segmentBtn, activeView === 'avatar' && [styles.segmentBtnActive, { backgroundColor: theme.surfaceSecondary }]]}
-          onPress={() => setActiveView('avatar')}
-        >
-          <Ionicons
-            name="body-outline"
-            size={16}
-            color={activeView === 'avatar' ? (isDark ? colors.brandCyan : colors.brandNavy) : '#64748B'}
-            style={{ marginRight: 6 }}
-          />
-          <Text style={[styles.segmentBtnText, activeView === 'avatar' && [styles.segmentBtnTextActive, { color: isDark ? '#FFFFFF' : colors.brandNavy }]]}>
-            3D Sign Avatar
-          </Text>
-        </TouchFeedback>
-      </View>
-
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {activeView === 'avatar' && (
-          <View style={styles.avatarSection}>
-            <SignAvatarComponent signSequence={currentAvatarSigns} isPlaying speed={1.0} />
-          </View>
-        )}
-
-        {/* Live Active Status Banner */}
-        <View style={[styles.liveStatusCard, { backgroundColor: isDark ? '#081D33' : '#F0F9FF', borderColor: theme.border }]}>
-          <View style={styles.pulseLiveDot} />
-          <Text style={[styles.liveStatusText, { color: isDark ? '#38BDF8' : '#0369A1' }]}>
-            {isMicActive
-              ? 'Hearing user is speaking aloud (Whisper AI processing)...'
-              : isDeafTyping
-              ? 'Deaf user is signing in PSL...'
-              : '2-Way Bridge Active • Instant PSL ↔ Urdu translation ready'}
-          </Text>
         </View>
 
-        {/* Chat Stream */}
-        <View style={styles.chatList}>
-          {messages.map(item => {
-            const isDeaf = item.sender === 'deaf';
-            return (
-              <View
-                key={item.id}
-                style={[
-                  styles.bubbleWrapper,
-                  isDeaf ? styles.bubbleWrapperDeaf : styles.bubbleWrapperHearing,
-                ]}
-              >
+        <ScrollView
+          ref={scroller}
+          style={styles.flex}
+          contentContainerStyle={styles.list}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          onContentSizeChange={() => {
+            if (view === 'chat') scroller.current?.scrollToEnd({ animated: true });
+          }}
+        >
+          {view === 'guide' ? (
+            <SignAvatarComponent signs={guideSigns} />
+          ) : (
+            turns.map((turn) => {
+              const signer = turn.side === 'signer';
+              const lines = linesFor(preferences.outputLanguage, turn.textEnglish, turn.textUrdu);
+              const single = turn.textEnglish === turn.textUrdu;
+              const ur = single ? (isUrduText(turn.textUrdu) ? turn.textUrdu : undefined) : lines.ur;
+              const en = single ? (isUrduText(turn.textUrdu) ? undefined : turn.textEnglish) : lines.en;
+              const mapped = mapTextToSignSequence(turn.textEnglish).supportedSigns;
+              return (
                 <View
+                  key={turn.id}
                   style={[
-                    styles.chatBubble,
-                    isDeaf
-                      ? [
-                          styles.chatBubbleDeaf,
-                          {
-                            backgroundColor: isDark ? '#0A2540' : '#FFFFFF',
-                            borderColor: isDark ? '#00E5FF' : '#E2E8F0',
-                          },
-                        ]
-                      : [
-                          styles.chatBubbleHearing,
-                          {
-                            backgroundColor: isDark ? '#142A47' : '#EDF4FC',
-                            borderColor: isDark ? '#234771' : '#CBD5E1',
-                          },
-                        ],
+                    styles.bubble,
+                    signer ? styles.signerBubble : styles.speakerBubble,
+                    { alignSelf: signer ? start : end },
+                    signer === isRTL ? styles.tailRight : styles.tailLeft,
                   ]}
                 >
-                  <View style={styles.bubbleHeader}>
-                    <View style={styles.senderPillRow}>
-                      <Ionicons
-                        name={isDeaf ? 'hand-left-outline' : 'mic-outline'}
-                        size={12}
-                        color={isDeaf ? (isDark ? '#00E5FF' : '#4F46E5') : (isDark ? '#34D399' : '#059669')}
-                        style={{ marginRight: 4 }}
-                      />
-                      <Text
-                        style={[
-                          styles.senderPill,
-                          isDeaf
-                            ? [styles.senderDeaf, isDark && { color: '#00E5FF' }]
-                            : [styles.senderHearing, isDark && { color: '#34D399' }],
-                        ]}
-                      >
-                        {isDeaf ? 'Deaf User (PSL Sign)' : 'Hearing User (Voice)'}
-                      </Text>
-                    </View>
-                    <Text style={[styles.bubbleTime, { color: theme.textSecondary }]}>{item.timestamp}</Text>
+                  <View style={[styles.bubbleHead, row]}>
+                    <IconBadge icon={signer ? 'hand-left-outline' : 'mic-outline'} tone={signer ? 'teal' : 'navy'} size="sm" />
+                    <AppText variant="caption" style={styles.flex} color={palette.ink2}>
+                      {signer ? t('chat.signer') : t('chat.speaker')}
+                    </AppText>
+                    <AppText variant="caption" color={palette.ink2}>
+                      {timeLabel(turn.at, lang)}
+                    </AppText>
                   </View>
-
-                  <Text
-                    style={[
-                      styles.urduMessageText,
-                      isDeaf
-                        ? [styles.urduMessageDeaf, isDark && { color: '#FFFFFF' }]
-                        : [styles.urduMessageHearing, isDark && { color: '#FFFFFF' }],
-                    ]}
-                  >
-                    {item.textUrdu}
-                  </Text>
-
-                  {item.textEnglish !== item.textUrdu && (
-                    <Text style={[styles.engMessageText, { color: theme.textSecondary }]}>{item.textEnglish}</Text>
-                  )}
-
-                  <View style={styles.bubbleActions}>
-                    {isDeaf ? (
-                      <TouchFeedback
-                        style={[styles.actionPill, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border }]}
-                        onPress={() => speakText(item.textUrdu)}
-                      >
-                        <Ionicons name="volume-high" size={13} color={isDark ? colors.brandCyan : colors.brandNavy} style={{ marginRight: 4 }} />
-                        <Text style={[styles.actionPillText, { color: isDark ? '#FFFFFF' : colors.brandNavy }]}>Speak Aloud</Text>
-                      </TouchFeedback>
-                    ) : (
-                      <TouchFeedback
-                        style={[styles.actionPill, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border }]}
+                  {ur ? <AppText variant="urdu">{ur}</AppText> : null}
+                  {en ? <AppText variant="body">{en}</AppText> : null}
+                  <View style={[styles.bubbleActions, row]}>
+                    {signer ? (
+                      <Chip label={t('preview.speakAloud')} onPress={() => speakText(ur ?? en ?? '')} />
+                    ) : mapped.length > 0 ? (
+                      <Chip
+                        label={t('chat.showGuide')}
                         onPress={() => {
-                          const { supportedSigns } = mapTextToSignSequence(item.textUrdu);
-                          if (supportedSigns.length > 0) {
-                            setCurrentAvatarSigns(supportedSigns);
-                            setActiveView('avatar');
-                          }
+                          setGuideSigns(mapped);
+                          setView('guide');
                         }}
-                      >
-                        <Ionicons name="play-outline" size={13} color={isDark ? colors.brandCyan : colors.brandCyanDark} style={{ marginRight: 4 }} />
-                        <Text style={[styles.actionPillText, { color: isDark ? colors.brandCyan : colors.brandCyanDark }]}>
-                          Play on Avatar
-                        </Text>
-                      </TouchFeedback>
-                    )}
+                      />
+                    ) : null}
                   </View>
                 </View>
-              </View>
-            );
-          })}
-        </View>
+              );
+            })
+          )}
+          {status !== 'idle' ? (
+            <AppText variant="caption" align="center" color={palette.ink2} accessibilityLiveRegion="polite">
+              {status === 'signing' ? t('chat.signing') : t('chat.listening')}
+            </AppText>
+          ) : null}
+        </ScrollView>
 
-        {/* Deaf User Quick Signs Input Tray */}
-        <View style={[styles.inputSectionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <View style={styles.sectionHeaderRow}>
-            <View style={styles.sectionHeaderLeft}>
-              <Ionicons name="hand-left-outline" size={16} color={isDark ? colors.brandCyan : colors.brandNavy} style={{ marginRight: 6 }} />
-              <Text style={[styles.sectionHeading, { color: isDark ? '#FFFFFF' : colors.brandNavy }]}>Deaf Side • Quick PSL Gestures</Text>
+        <View style={styles.composer}>
+          <SegmentedControl<Side>
+            size="sm"
+            accessibilityLabel={t('chat.composerSide')}
+            value={side}
+            onChange={setSide}
+            options={[
+              { value: 'signer', label: t('chat.signer') },
+              { value: 'speaker', label: t('chat.speaker') },
+            ]}
+          />
+          {side === 'signer' ? (
+            <View style={[styles.signs, row]}>
+              {vocabulary.slice(0, 6).map((sign) => (
+                <Chip key={sign.id} label={signName(sign, lang)} onPress={() => sendSign(sign)} />
+              ))}
+              <Chip label={t('chat.openCamera')} tone="teal" onPress={() => navigation.navigate('SignRecognition')} />
             </View>
-            <TouchFeedback onPress={() => navigation.navigate('SignRecognition')}>
-              <Text style={[styles.camLinkText, { color: isDark ? colors.brandCyan : colors.brandCyanDark }]}>Open Camera →</Text>
-            </TouchFeedback>
-          </View>
-
-          <View style={styles.quickSignsGrid}>
-            {vocabulary.slice(0, 8).map(sign => (
-              <TouchFeedback
-                key={sign.id}
-                style={[styles.quickSignBtn, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border }]}
-                onPress={() => handleSendDeafSign(sign)}
-              >
-                <Ionicons name="hand-left-outline" size={13} color={isDark ? colors.brandCyan : colors.brandNavy} style={{ marginRight: 4 }} />
-                <Text style={[styles.quickSignText, { color: isDark ? '#FFFFFF' : colors.brandNavy }]}>
-                  {sign.signNameEnglish.split('/')[0].trim()}
-                </Text>
-              </TouchFeedback>
-            ))}
-          </View>
-        </View>
-
-        {/* Hearing User Voice & Text Input */}
-        <View style={[styles.inputSectionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <View style={styles.sectionHeaderLeft}>
-            <Ionicons name="mic-outline" size={16} color={isDark ? colors.brandCyan : colors.brandNavy} style={{ marginRight: 6 }} />
-            <Text style={[styles.sectionHeading, { color: isDark ? '#FFFFFF' : colors.brandNavy }]}>Hearing Side • Voice or Text</Text>
-          </View>
-
-          <View style={styles.hearingInputRow}>
-            <TextInput
-              style={[styles.hearingTextInput, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border, color: isDark ? '#FFFFFF' : colors.brandNavy }]}
-              value={hearingText}
-              onChangeText={setHearingText}
-              placeholder="Type message for Deaf user..."
-              placeholderTextColor="#94A3B8"
-            />
-
-            <TouchFeedback
-              style={[
-                styles.micBtn,
-                { backgroundColor: isDark ? colors.brandCyan : colors.brandNavy },
-                isMicActive && styles.micBtnActive,
-              ]}
-              onPress={handleToggleMic}
-            >
-              <Ionicons name={isMicActive ? 'stop' : 'mic'} size={20} color={isMicActive ? '#FFFFFF' : isDark ? '#001A38' : '#FFFFFF'} />
-            </TouchFeedback>
-
-            {hearingText.trim().length > 0 && (
-              <TouchFeedback
-                style={[styles.sendBtn, { backgroundColor: colors.brandCyan }]}
-                onPress={() => handleSendHearingMessage()}
-              >
-                <Ionicons name="send" size={18} color="#001A38" />
-              </TouchFeedback>
-            )}
-          </View>
-
-          {isMicActive && (
-            <View style={styles.waveformContainer}>
-              <AudioWaveformVisualizer
-                isActive={isMicActive}
-                barCount={16}
-                height={24}
-                color={isDark ? colors.brandCyan : colors.brandNavy}
-              />
-              <Text style={[styles.listeningText, { color: isDark ? colors.brandCyan : colors.brandCyanDark }]}>Listening via Whisper AI...</Text>
+          ) : (
+            <View style={[styles.inputRow, row]}>
+              <View style={styles.flex}>
+                <Input
+                  raised
+                  value={draft}
+                  onChangeText={setDraft}
+                  urdu={isUrduText(draft)}
+                  placeholder={t('chat.placeholder')}
+                  accessibilityLabel={t('chat.placeholder')}
+                  returnKeyType="send"
+                  onSubmitEditing={sendText}
+                />
+              </View>
+              {draft.trim() ? (
+                <IconButton icon="send" tone="outline" accessibilityLabel={t('chat.send')} onPress={sendText} />
+              ) : (
+                <IconButton icon="mic" tone="outline" accessibilityLabel={t('speech.start')} onPress={simulateSpeech} />
+              )}
             </View>
           )}
         </View>
-      </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F4F7FB',
+  root: { flex: 1, backgroundColor: palette.canvas },
+  flex: { flex: 1 },
+  save: { minHeight: 44, paddingHorizontal: spacing.md },
+  switcher: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm },
+  list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, gap: spacing.md },
+  bubble: { maxWidth: '90%', minWidth: '70%', borderRadius: radius.lg, padding: spacing.md, gap: spacing.sm },
+  signerBubble: { backgroundColor: palette.surface, boxShadow: shadow.card },
+  speakerBubble: { backgroundColor: palette.navySoft },
+  tailLeft: { borderTopLeftRadius: 5 },
+  tailRight: { borderTopRightRadius: 5 },
+  bubbleHead: { alignItems: 'center', gap: spacing.sm },
+  bubbleActions: {},
+  composer: {
+    backgroundColor: palette.surface,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    gap: spacing.md,
+    boxShadow: shadow.bar,
   },
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 40,
-  },
-  saveHeaderBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-    backgroundColor: '#F1F5F9',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  saveHeaderBtnText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: colors.brandNavy,
-  },
-  segmentBar: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    marginTop: 10,
-    borderRadius: 14,
-    padding: 4,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  segmentBtn: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  segmentBtnActive: {
-    backgroundColor: '#F1F5F9',
-  },
-  segmentBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#64748B',
-  },
-  segmentBtnTextActive: {
-    color: colors.brandNavy,
-  },
-  avatarSection: {
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  liveStatusCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0F9FF',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: '#BAE6FD',
-  },
-  pulseLiveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.brandCyan,
-    marginRight: 8,
-  },
-  liveStatusText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#0369A1',
-    flex: 1,
-  },
-  chatList: {
-    marginTop: 12,
-    marginBottom: 12,
-    gap: 12,
-  },
-  bubbleWrapper: {
-    flexDirection: 'row',
-    width: '100%',
-  },
-  bubbleWrapperDeaf: {
-    justifyContent: 'flex-start',
-  },
-  bubbleWrapperHearing: {
-    justifyContent: 'flex-end',
-  },
-  chatBubble: {
-    maxWidth: '85%',
-    borderRadius: 20,
-    padding: 14,
-    borderWidth: 1.2,
-  },
-  chatBubbleDeaf: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#E2E8F0',
-    borderTopLeftRadius: 4,
-  },
-  chatBubbleHearing: {
-    backgroundColor: '#EDF4FC',
-    borderColor: '#CBD5E1',
-    borderTopRightRadius: 4,
-  },
-  bubbleHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  senderPillRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  senderPill: {
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  senderDeaf: {
-    color: '#4F46E5',
-  },
-  senderHearing: {
-    color: '#059669',
-  },
-  bubbleTime: {
-    fontSize: 10,
-    color: '#94A3B8',
-  },
-  urduMessageText: {
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 24,
-  },
-  urduMessageDeaf: {
-    color: colors.brandNavy,
-    textAlign: 'left',
-  },
-  urduMessageHearing: {
-    color: colors.brandNavyDark,
-    textAlign: 'left',
-  },
-  engMessageText: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 4,
-    fontStyle: 'italic',
-  },
-  bubbleActions: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
-  },
-  actionPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  actionPillText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.brandNavy,
-  },
-  inputSectionCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1.2,
-    borderColor: '#E2E8F0',
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  sectionHeading: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: colors.brandNavy,
-  },
-  camLinkText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.brandCyanDark,
-  },
-  quickSignsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  quickSignBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  quickSignText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.brandNavy,
-  },
-  hearingInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 10,
-  },
-  hearingTextInput: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 13,
-    color: colors.brandNavy,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  micBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: colors.brandNavy,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  micBtnActive: {
-    backgroundColor: '#EF4444',
-  },
-  sendBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: colors.brandCyan,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  waveformContainer: {
-    alignItems: 'center',
-    marginTop: 10,
-    paddingTop: 8,
-  },
-  listeningText: {
-    fontSize: 11,
-    color: colors.brandCyanDark,
-    fontWeight: '600',
-    marginTop: 4,
-  },
+  signs: { flexWrap: 'wrap', gap: spacing.sm },
+  inputRow: { alignItems: 'center', gap: spacing.sm },
 });

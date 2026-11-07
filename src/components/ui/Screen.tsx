@@ -10,15 +10,18 @@ interface ScreenProps {
   edges?: Edge[];
   contentStyle?: ViewStyle;
   footer?: React.ReactNode;
+  /** Fixed above the scrolling content. */
+  header?: React.ReactNode;
 }
 
 // Standard screen shell: safe area, canvas background, 16 px gutter, 12 px vertical rhythm.
 // Android is edge-to-edge in SDK 57, so the window no longer resizes for the keyboard;
 // KeyboardAvoidingView pads on both platforms instead.
-export function Screen({ children, scroll = true, white = false, edges = ['top'], contentStyle, footer }: ScreenProps) {
+export function Screen({ children, scroll = true, white = false, edges = ['top'], contentStyle, footer, header }: ScreenProps) {
   const bg = { backgroundColor: white ? palette.surface : palette.canvas };
   return (
     <SafeAreaView style={[styles.root, bg]} edges={edges}>
+      {header}
       <KeyboardAvoidingView style={styles.root} behavior="padding">
         {scroll ? (
           <ScrollView

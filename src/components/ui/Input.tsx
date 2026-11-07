@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Platform, Pressable, StyleSheet, TextInput, TextInputProps, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { fonts, palette, radius, spacing } from '../../theme';
+import { fonts, palette, radius, spacing, useDirection } from '../../theme';
+import { useI18n } from '../../i18n';
 import { AppText } from './AppText';
 import { IconName } from './icons';
 
@@ -29,6 +30,10 @@ export function Input({
   onBlur,
   ...rest
 }: InputProps) {
+  const { t } = useI18n();
+  const { isRTL, row } = useDirection();
+  // Emails and passwords stay left-to-right even in the Urdu UI.
+  const alignRight = isRTL && !password && rest.keyboardType !== 'email-address';
   const [focused, setFocused] = useState(false);
   const [hidden, setHidden] = useState(true);
 
@@ -40,7 +45,7 @@ export function Input({
   return (
     <View style={styles.field}>
       {label ? <AppText variant="label">{label}</AppText> : null}
-      <View style={[styles.box, boxState]}>
+      <View style={[styles.box, row, boxState]}>
         {icon ? <Ionicons name={icon} size={16} color={palette.muted} /> : null}
         <TextInput
           {...rest}
@@ -55,21 +60,21 @@ export function Input({
             setFocused(false);
             onBlur?.(e);
           }}
-          style={[styles.input, urdu ? styles.urdu : null]}
+          style={[styles.input, alignRight ? styles.right : null, urdu ? styles.urdu : null]}
         />
         {password ? (
           <Pressable
             onPress={() => setHidden((h) => !h)}
             hitSlop={12}
             accessibilityRole="button"
-            accessibilityLabel={hidden ? 'Show password' : 'Hide password'}
+            accessibilityLabel={hidden ? t('common.showPassword') : t('common.hidePassword')}
           >
             <Ionicons name={hidden ? 'eye-outline' : 'eye-off-outline'} size={16} color={palette.muted} />
           </Pressable>
         ) : null}
       </View>
       {message ? (
-        <View style={styles.hintRow} accessibilityLiveRegion={error ? 'polite' : 'none'}>
+        <View style={[styles.hintRow, row]} accessibilityLiveRegion={error ? 'polite' : 'none'}>
           <Ionicons name={messageIcon} size={13} color={messageColor} style={styles.hintIcon} />
           <AppText variant="caption" color={messageColor} style={styles.hintText}>
             {message}
@@ -89,7 +94,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: 'transparent',
     paddingHorizontal: spacing.md,
-    flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
   },
@@ -100,14 +104,15 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 44,
     fontFamily: fonts.regular,
-    fontSize: 14,
+    fontSize: 15,
     color: palette.ink,
     paddingVertical: 0,
     // The teal border already shows focus; drop the browser outline on web builds.
     ...(Platform.OS === 'web' ? { outlineWidth: 0 } : null),
   },
-  urdu: { fontFamily: fonts.urdu, fontSize: 15, textAlign: 'right', writingDirection: 'rtl' },
-  hintRow: { flexDirection: 'row', gap: 6, alignItems: 'flex-start' },
+  right: { textAlign: 'right' },
+  urdu: { fontFamily: fonts.urdu, fontSize: 16, lineHeight: 34, textAlign: 'right', writingDirection: 'rtl' },
+  hintRow: { gap: 6, alignItems: 'flex-start' },
   hintIcon: { marginTop: 2 },
   hintText: { flex: 1 },
 });

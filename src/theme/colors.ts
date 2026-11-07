@@ -10,7 +10,7 @@ export const palette = {
 
   ink: '#0E1E3A',
   ink2: '#4A5B78',
-  muted: '#8392AB',
+  muted: '#5F6F8A', // 4.7:1 on canvas, 5:1 on white
   line: '#E3E9F2',
   line2: '#EEF2F7',
   toggleOff: '#CBD5E3',

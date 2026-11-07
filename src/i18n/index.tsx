@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { en, StringKey } from './en';
 import { ur } from './ur';
+import { DirectionContext } from '../theme/direction';
 import { ApiError } from '../services/api';
 
 // UI language (labels, buttons, messages). Separate from the output-language preference,
@@ -43,7 +44,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo(() => ({ lang, setLang, t }), [lang, setLang, t]);
-  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
+  return (
+    <DirectionContext.Provider value={lang === 'ur'}>
+      <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
+    </DirectionContext.Provider>
+  );
 }
 
 export function useI18n(): I18nValue {

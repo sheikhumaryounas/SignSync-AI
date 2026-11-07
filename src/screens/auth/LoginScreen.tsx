@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, UserRole } from '../../types';
-import { fonts, palette, spacing } from '../../theme';
+import { fonts, palette, spacing, useDirection } from '../../theme';
 import { AppText, Button, Chip, Input, Notice, Screen } from '../../components/ui';
 import { LanguageToggle } from '../../components/LanguageToggle';
 import { useAuth } from '../../context/AuthContext';
@@ -15,13 +15,14 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
 const demoRoles: { role: UserRole; label: string }[] = [
   { role: 'deaf_mute', label: 'Deaf' },
-  { role: 'blind_hearing', label: 'Hearing' },
-  { role: 'normal', label: 'Normal' },
+  { role: 'blind_hearing', label: 'Blind' },
+  { role: 'normal', label: 'Hearing' },
   { role: 'admin', label: 'Admin' },
 ];
 
 export default function LoginScreen({ navigation }: Props) {
   const { t } = useI18n();
+  const { row, end } = useDirection();
   const auth = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -100,7 +101,7 @@ export default function LoginScreen({ navigation }: Props) {
         onSubmitEditing={onSubmit}
       />
 
-      <Pressable onPress={() => setShowForgot((s) => !s)} hitSlop={12} style={styles.forgot} accessibilityRole="button">
+      <Pressable onPress={() => setShowForgot((s) => !s)} hitSlop={12} style={[styles.forgot, { alignSelf: end }]} accessibilityRole="button">
         <AppText variant="caption" color={palette.tealInk} style={styles.link}>
           {t('login.forgot')}
         </AppText>
@@ -109,7 +110,7 @@ export default function LoginScreen({ navigation }: Props) {
 
       <Button title={t('login.submit')} iconRight="arrow-forward" loading={submitting} onPress={onSubmit} />
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, row]}>
         <AppText variant="bodySm" color={palette.ink2}>
           {t('login.footer')}{' '}
         </AppText>
@@ -139,9 +140,9 @@ export default function LoginScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   content: { flexGrow: 1, gap: spacing.lg, paddingHorizontal: spacing.xl },
   title: { gap: spacing.xs, marginTop: spacing.sm },
-  forgot: { alignSelf: 'flex-end', marginTop: -spacing.sm },
+  forgot: { marginTop: -spacing.sm },
   link: { fontFamily: fonts.semibold },
-  footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' },
+  footer: { justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' },
   demo: { marginTop: 'auto', gap: spacing.sm, paddingTop: spacing.lg, borderTopWidth: 1, borderTopColor: palette.line2 },
   demoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, justifyContent: 'center' },
 });

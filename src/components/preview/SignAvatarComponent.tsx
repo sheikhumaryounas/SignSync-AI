@@ -1,715 +1,252 @@
-import React, { useState, useEffect, useRef } from 'react';
-import {
-  Animated,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing } from '../../theme';
+import React, { useEffect, useMemo, useState } from 'react';
+import { AccessibilityInfo, StyleSheet, View } from 'react-native';
+import Svg, { Circle, G, Line, Path, Rect } from 'react-native-svg';
+import { palette, radius, spacing, useDirection } from '../../theme';
 import { SignVocabularyItem } from '../../types';
-import { TouchFeedback } from './TouchFeedback';
+import { AppText, Button, Card, Chip, IconButton, SegmentedControl, StatusPill } from '../ui';
 import { usePreview } from '../../context/PreviewContext';
+import { useI18n } from '../../i18n';
+import { signDescription, signName, signNameUr } from '../../services/preview/aiEngine';
+import { HandPose, HandShape, restPose, signPoses } from './signPoses';
 
-interface SignAvatarComponentProps {
-  currentSign?: SignVocabularyItem | null;
-  signSequence?: SignVocabularyItem[];
-  isPlaying?: boolean;
-  unsupportedWords?: string[];
-  fingerspelledWords?: { word: string; letters: string[] }[];
-  onPlayToggle?: () => void;
-  onTogglePlay?: () => void;
-  onReplay?: () => void;
-  speed?: number;
-  onSpeedChange?: (speed: number) => void;
-  onChangeSpeed?: (speed: number) => void;
+const SIGN_DURATION_MS = 2400;
+const SPEEDS = ['0.5', '1', '1.5'] as const;
+type Speed = (typeof SPEEDS)[number];
+
+const SHOULDER_Y = 84;
+const SHOULDER_RIGHT = 92;
+const SHOULDER_LEFT = 148;
+const UPPER_ARM = 46;
+const FOREARM = 48;
+
+// Where a hand is at this point in its motion. `phase` runs from 0 to 1 and repeats.
+function handAt(pose: HandPose, phase: number) {
+  const turn = phase * Math.PI * 2;
+  if (pose.circle) {
+    return { x: pose.x + Math.cos(turn) * pose.circle, y: pose.y + Math.sin(turn) * pose.circle };
+  }
+  const amount = 0.5 - Math.cos(turn) / 2;
+  return { x: pose.x + (pose.dx ?? 0) * amount, y: pose.y + (pose.dy ?? 0) * amount };
 }
 
-export const SignAvatarComponent: React.FC<SignAvatarComponentProps> = ({
-  currentSign,
-  signSequence = [],
-  isPlaying = true,
-  unsupportedWords = [],
-  onPlayToggle,
-  onTogglePlay,
-  onReplay,
-  speed = 1.0,
-  onSpeedChange,
-  onChangeSpeed,
-}) => {
-  const { speakText, isSpeaking, stopSpeaking, theme, isDark } = usePreview();
-  const handleTogglePlay = onTogglePlay || onPlayToggle;
-  const handleChangeSpeed = onChangeSpeed || onSpeedChange;
+// Two-bone arm: finds the elbow joining the shoulder to the hand, bending away from the body.
+function elbowFor(shoulderX: number, hand: { x: number; y: number }, side: -1 | 1) {
+  const dx = hand.x - shoulderX;
+  const dy = hand.y - SHOULDER_Y;
+  const reach = Math.min(Math.hypot(dx, dy), UPPER_ARM + FOREARM - 1) || 1;
+  const along = (UPPER_ARM * UPPER_ARM - FOREARM * FOREARM + reach * reach) / (2 * reach);
+  const out = Math.sqrt(Math.max(UPPER_ARM * UPPER_ARM - along * along, 0));
+  const ux = dx / reach;
+  const uy = dy / reach;
+  // Of the two possible elbows, take the one on the outer side of the body.
+  const a = { x: shoulderX + ux * along - uy * out, y: SHOULDER_Y + uy * along + ux * out };
+  const b = { x: shoulderX + ux * along + uy * out, y: SHOULDER_Y + uy * along - ux * out };
+  return (a.x - b.x) * side > 0 ? a : b;
+}
 
-  const [activeSignIndex, setActiveSignIndex] = useState<number>(0);
-  const [cameraAngle, setCameraAngle] = useState<'front' | 'angle' | 'side'>('front');
-  
-  // Animation values
-  const handBounce = useRef(new Animated.Value(0)).current;
-  const syncRotation = useRef(new Animated.Value(0)).current;
-  const circuitPulse = useRef(new Animated.Value(0.85)).current;
-  const angleRotate = useRef(new Animated.Value(0)).current;
+const FINGERS: Record<HandShape, number> = { fist: 0, point: 1, two: 2, three: 3, open: 5 };
 
-  const activeSign = signSequence.length > 0
-    ? signSequence[activeSignIndex]
-    : currentSign;
+function Hand({ x, y, shape, color }: { x: number; y: number; shape: HandShape; color: string }) {
+  const count = FINGERS[shape];
+  const spread = count > 1 ? 1.5 / (count - 1) : 0;
+  return (
+    <G>
+      {Array.from({ length: count }, (_, i) => {
+        const angle = -Math.PI / 2 + (count > 1 ? -0.75 + i * spread : 0);
+        return (
+          <Line
+            key={i}
+            x1={x + Math.cos(angle) * 6}
+            y1={y + Math.sin(angle) * 6}
+            x2={x + Math.cos(angle) * 16}
+            y2={y + Math.sin(angle) * 16}
+            stroke={color}
+            strokeWidth={3.6}
+            strokeLinecap="round"
+          />
+        );
+      })}
+      <Circle cx={x} cy={y} r={8.5} fill={color} />
+    </G>
+  );
+}
 
-  // Handle angle rotation animation
-  useEffect(() => {
-    let targetDeg = 0;
-    if (cameraAngle === 'angle') targetDeg = 25;
-    if (cameraAngle === 'side') targetDeg = 55;
+function Figure({ sign, phase }: { sign?: SignVocabularyItem; phase: number }) {
+  const pose = (sign && signPoses[sign.id]) || restPose;
+  const right = handAt(pose.right, phase);
+  const left = handAt(pose.left, phase);
+  const rightElbow = elbowFor(SHOULDER_RIGHT, right, -1);
+  const leftElbow = elbowFor(SHOULDER_LEFT, left, 1);
 
-    Animated.spring(angleRotate, {
-      toValue: targetDeg,
-      friction: 7,
-      tension: 40,
-      useNativeDriver: true,
-    }).start();
-  }, [cameraAngle, angleRotate]);
-
-  useEffect(() => {
-    if (!isPlaying) return;
-
-    // Hand sign rhythmic motion
-    const handAnim = Animated.loop(
-      Animated.sequence([
-        Animated.timing(handBounce, {
-          toValue: 1,
-          duration: 650 / speed,
-          useNativeDriver: true,
-        }),
-        Animated.timing(handBounce, {
-          toValue: 0,
-          duration: 650 / speed,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    // Sync circle rotation in background
-    const rotateAnim = Animated.loop(
-      Animated.timing(syncRotation, {
-        toValue: 1,
-        duration: 8000 / speed,
-        useNativeDriver: true,
-      })
-    );
-
-    // Circuit glow pulse
-    const pulseAnim = Animated.loop(
-      Animated.sequence([
-        Animated.timing(circuitPulse, {
-          toValue: 1.15,
-          duration: 900,
-          useNativeDriver: true,
-        }),
-        Animated.timing(circuitPulse, {
-          toValue: 0.85,
-          duration: 900,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    handAnim.start();
-    rotateAnim.start();
-    pulseAnim.start();
-
-    return () => {
-      handAnim.stop();
-      rotateAnim.stop();
-      pulseAnim.stop();
-    };
-  }, [isPlaying, speed, activeSignIndex, handBounce, syncRotation, circuitPulse]);
-
-  // Automatic sequence progression
-  useEffect(() => {
-    if (!isPlaying || signSequence.length <= 1) return;
-
-    const timer = setInterval(() => {
-      setActiveSignIndex(prev => (prev + 1) % signSequence.length);
-    }, 2400 / speed);
-
-    return () => clearInterval(timer);
-  }, [isPlaying, signSequence, speed]);
-
-  const translateY = handBounce.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -18],
-  });
-
-  const rotateDeg = syncRotation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
-
-  const avatarPerspectiveRotate = angleRotate.interpolate({
-    inputRange: [0, 55],
-    outputRange: ['0deg', '55deg'],
-  });
-
-  const handleSpeakCurrentSign = () => {
-    if (!activeSign) return;
-    if (isSpeaking) {
-      stopSpeaking();
-    } else {
-      speakText(activeSign.signNameUrdu);
-    }
-  };
+  const arm = (shoulderX: number, elbow: { x: number; y: number }, hand: { x: number; y: number }, color: string) => (
+    <Path
+      d={`M ${shoulderX} ${SHOULDER_Y} L ${elbow.x} ${elbow.y} L ${hand.x} ${hand.y}`}
+      stroke={color}
+      strokeWidth={11}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="none"
+    />
+  );
 
   return (
-    <View style={styles.container}>
-      {/* Top Banner with Active Gesture Badge & Angle Controls */}
-      <View style={styles.topBar}>
-        <View style={styles.signBadge}>
-          <Ionicons name="hand-left" size={14} color="#00E5FF" style={{ marginRight: 5 }} />
-          <Text style={styles.signNameText}>
-            {activeSign?.signNameEnglish.split('/')[0].trim() || 'SignSync 3D Avatar'}
-          </Text>
-        </View>
+    <Svg viewBox="0 0 240 200" width="100%" height={200}>
+      {/* Body */}
+      <Rect x={86} y={74} width={68} height={126} rx={22} fill={palette.navy} />
+      <Rect x={112} y={58} width={16} height={20} fill={palette.navySoft} />
+      {/* Head, kept neutral: faces carry grammar in sign language, so the real avatar needs a full one. */}
+      <Circle cx={120} cy={40} r={25} fill={palette.navySoft} stroke={palette.navy} strokeWidth={2.5} />
+      <Circle cx={111} cy={37} r={2.6} fill={palette.navy} />
+      <Circle cx={129} cy={37} r={2.6} fill={palette.navy} />
+      <Path d="M 112 49 Q 120 54 128 49" stroke={palette.navy} strokeWidth={2.2} strokeLinecap="round" fill="none" />
+      {/* Arms and hands */}
+      {arm(SHOULDER_LEFT, leftElbow, left, palette.navy2)}
+      {arm(SHOULDER_RIGHT, rightElbow, right, palette.navy2)}
+      <Hand x={left.x} y={left.y} shape={pose.left.shape} color={palette.tealInk} />
+      <Hand x={right.x} y={right.y} shape={pose.right.shape} color={palette.teal} />
+    </Svg>
+  );
+}
 
-        {/* Multi-Angle View Toggle */}
-        <View style={styles.angleSelector}>
-          {[
-            { id: 'front' as const, label: 'Front' },
-            { id: 'angle' as const, label: '45°' },
-            { id: 'side' as const, label: 'Side' },
-          ].map(ang => (
-            <TouchFeedback
-              key={ang.id}
-              style={[styles.angleBtn, cameraAngle === ang.id && styles.angleBtnActive]}
-              onPress={() => setCameraAngle(ang.id)}
-            >
-              <Text style={[styles.angleBtnText, cameraAngle === ang.id && styles.angleBtnTextActive]}>
-                {ang.label}
-              </Text>
-            </TouchFeedback>
-          ))}
-        </View>
+// Plays a sequence of signs on a placeholder figure. Clearly labelled as an illustration: the real
+// avatar is FYP-2 work, and the written description below stays the usable instruction.
+export const SignAvatarComponent: React.FC<{ signs: SignVocabularyItem[] }> = ({ signs }) => {
+  const { t, lang } = useI18n();
+  const { row } = useDirection();
+  const { speakText, stopSpeaking, isSpeaking, preferences } = usePreview();
+  const [index, setIndex] = useState(0);
+  const [playing, setPlaying] = useState(true);
+  const [speed, setSpeed] = useState<Speed>(preferences.avatarSpeed === 1 ? '1' : '1');
+  const [phase, setPhase] = useState(0);
+  const [reduceMotion, setReduceMotion] = useState(false);
+
+  const multiplier = Number(speed);
+  // The parent recalculates the list on every keystroke; only a change in signs restarts playback.
+  const signsKey = useMemo(() => signs.map((s) => s.id).join(','), [signs]);
+  const sign = signs[index] ?? signs[0];
+
+  useEffect(() => {
+    let live = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((on) => live && setReduceMotion(on))
+      .catch(() => undefined);
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    return () => {
+      live = false;
+      sub.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    setIndex(0);
+    setPlaying(true);
+  }, [signsKey]);
+
+  // The hand motion. Skipped under reduce-motion; the sign still advances and is described in text.
+  useEffect(() => {
+    if (!playing || reduceMotion || !signsKey) return;
+    const startedAt = Date.now();
+    const id = setInterval(() => setPhase((((Date.now() - startedAt) * multiplier) / 1200) % 1), 50);
+    return () => clearInterval(id);
+  }, [playing, reduceMotion, signsKey, multiplier]);
+
+  useEffect(() => {
+    if (!playing) return;
+    const total = signsKey ? signsKey.split(',').length : 0;
+    if (total <= 1) return;
+    const id = setInterval(() => setIndex((i) => (i + 1) % total), SIGN_DURATION_MS / multiplier);
+    return () => clearInterval(id);
+  }, [playing, signsKey, multiplier]);
+
+  return (
+    <Card style={styles.card}>
+      <View style={[styles.head, row]}>
+        <AppText variant="heading" accessibilityRole="header">
+          {t('avatar.title')}
+        </AppText>
+        {signs.length > 1 ? <StatusPill label={t('avatar.step', { n: index + 1, total: signs.length })} tone="info" /> : null}
       </View>
 
-      {/* Main Avatar Stage with 3D Perspective Rotation */}
-      <View style={styles.avatarStage}>
-        {/* Rotating Sync Ambient Ring */}
-        <Animated.View
-          style={[
-            styles.syncCircleBackdrop,
-            { transform: [{ rotate: rotateDeg }] },
-          ]}
-        >
-          <View style={styles.ambientOuterRing} />
-        </Animated.View>
-
-        {/* Animated 3D Character Body */}
-        <Animated.View
-          style={[
-            styles.avatarBodyContainer,
-            {
-              transform: [{ rotateY: avatarPerspectiveRotate }],
-            },
-          ]}
-        >
-          {/* Avatar Head */}
-          <View style={styles.avatarHead}>
-            <View style={styles.avatarHair} />
-            <View style={styles.avatarEyes}>
-              <View style={styles.eye} />
-              <View style={styles.eye} />
-            </View>
-            <View style={styles.avatarSmile} />
-          </View>
-
-          {/* Avatar Torso with Navy & Glowing Circuit Motif */}
-          <View style={styles.avatarTorso}>
-            <View style={styles.collar} />
-            <Animated.View style={[styles.circuitGlow, { transform: [{ scale: circuitPulse }] }]}>
-              <Ionicons name="git-commit-outline" size={20} color="#00E5FF" />
-            </Animated.View>
-          </View>
-
-          {/* Hands Performing Sign Gesture */}
-          <Animated.View
-            style={[
-              styles.handsContainer,
-              { transform: [{ translateY }] },
-            ]}
-          >
-            {/* Left Hand: Human-form navy glove */}
-            <View style={styles.navyHandBox}>
-              <Ionicons name="hand-left" size={22} color="#FFFFFF" />
-            </View>
-
-            {/* Central Motion Cyber Link */}
-            <View style={styles.centerMotion}>
-              <Ionicons name="pulse" size={14} color="#00E5FF" />
-            </View>
-
-            {/* Right Hand: High-tech circuit hand with cyan nodes */}
-            <View style={styles.techHandBox}>
-              <Ionicons name="hand-left-outline" size={22} color="#00E5FF" />
-              <View style={styles.circuitNode1} />
-              <View style={styles.circuitNode2} />
-            </View>
-          </Animated.View>
-        </Animated.View>
-
-        {/* Urdu & English Subtitle Pill with Instant Pronounce Speaker */}
-        {activeSign && (
-          <View style={styles.subtitlePill}>
-            <View style={styles.subtitleTextGroup}>
-              <Text style={styles.subtitleUrdu}>{activeSign.signNameUrdu}</Text>
-              <Text style={styles.subtitleEng} numberOfLines={1}>
-                {activeSign.descriptionEnglish}
-              </Text>
-            </View>
-            <TouchFeedback
-              style={[styles.ttsSmallBtn, isSpeaking && styles.ttsSmallBtnActive]}
-              onPress={handleSpeakCurrentSign}
-            >
-              <Ionicons
-                name={isSpeaking ? 'volume-high' : 'volume-medium-outline'}
-                size={16}
-                color={isSpeaking ? '#00E5FF' : '#FFFFFF'}
-              />
-            </TouchFeedback>
-          </View>
-        )}
+      <View style={styles.stage} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+        <Figure sign={sign} phase={phase} />
       </View>
 
-      {/* Interactive Sequence Scrubber Timeline */}
-      {signSequence.length > 1 && (
-        <View style={styles.timelineScrubber}>
-          <Text style={styles.scrubberLabel}>SEQUENCE SCRUBBER:</Text>
-          <View style={styles.timelineRow}>
-            {signSequence.map((item, idx) => {
-              const isActive = activeSignIndex === idx;
-              return (
-                <TouchFeedback
-                  key={item.id + idx}
-                  style={[
-                    styles.timelineChip,
-                    isActive && styles.timelineChipActive,
-                  ]}
-                  onPress={() => setActiveSignIndex(idx)}
-                >
-                  <Text
-                    style={[
-                      styles.timelineChipText,
-                      isActive && styles.timelineChipTextActive,
-                    ]}
-                  >
-                    {idx + 1}. {item.signNameEnglish.split('/')[0].trim()}
-                  </Text>
-                </TouchFeedback>
-              );
-            })}
+      {sign ? (
+        <>
+          <View style={[styles.signRow, row]} accessibilityLiveRegion="polite">
+            <View style={styles.flex}>
+              <AppText variant="title">{signName(sign, lang)}</AppText>
+              <AppText variant="bodySm" color={palette.ink2}>
+                {signDescription(sign, lang)}
+              </AppText>
+            </View>
+            <IconButton
+              icon={isSpeaking ? 'stop' : 'volume-high-outline'}
+              tone="outline"
+              accessibilityLabel={isSpeaking ? t('preview.stopSpeaking') : t('avatar.sayName')}
+              onPress={() => (isSpeaking ? stopSpeaking() : speakText(lang === 'ur' ? signNameUr(sign) : signName(sign, 'en')))}
+            />
           </View>
-        </View>
+
+          {signs.length > 1 ? (
+            <View style={[styles.chips, row]}>
+              {signs.map((s, i) => (
+                <Chip key={s.id} label={`${i + 1}. ${signName(s, lang)}`} selected={i === index} onPress={() => setIndex(i)} />
+              ))}
+            </View>
+          ) : null}
+
+          <View style={[styles.controls, row]}>
+            <Button
+              title={playing ? t('avatar.pause') : t('avatar.play')}
+              icon={playing ? 'pause' : 'play'}
+              variant="ghost"
+              fullWidth={false}
+              style={styles.control}
+              onPress={() => setPlaying((p) => !p)}
+            />
+            <Button
+              title={t('avatar.replay')}
+              icon="reload-outline"
+              variant="ghost"
+              fullWidth={false}
+              style={styles.control}
+              onPress={() => {
+                setIndex(0);
+                setPlaying(true);
+              }}
+            />
+            <SegmentedControl<Speed>
+              size="sm"
+              style={styles.speed}
+              accessibilityLabel={t('avatar.speed')}
+              value={speed}
+              onChange={setSpeed}
+              options={SPEEDS.map((s) => ({ value: s, label: `${s}x` }))}
+            />
+          </View>
+        </>
+      ) : (
+        <AppText variant="bodySm" align="center" color={palette.ink2}>
+          {t('avatar.empty')}
+        </AppText>
       )}
 
-      {/* Playback Controls Bar */}
-      <View style={styles.controlsBar}>
-        <View style={styles.leftControls}>
-          <TouchFeedback
-            style={styles.playBtn}
-            onPress={handleTogglePlay}
-          >
-            <Ionicons
-              name={isPlaying ? 'pause' : 'play'}
-              size={13}
-              color="#001A38"
-              style={{ marginRight: 4 }}
-            />
-            <Text style={styles.playBtnText}>
-              {isPlaying ? 'Pause' : 'Play'}
-            </Text>
-          </TouchFeedback>
-
-          <TouchFeedback
-            style={styles.replayBtn}
-            onPress={() => {
-              setActiveSignIndex(0);
-              if (onReplay) onReplay();
-            }}
-          >
-            <Ionicons name="reload-outline" size={13} color="#FFFFFF" style={{ marginRight: 4 }} />
-            <Text style={styles.replayBtnText}>Replay</Text>
-          </TouchFeedback>
-        </View>
-
-        {/* Speed Selector Pills */}
-        {handleChangeSpeed && (
-          <View style={styles.speedRow}>
-            {[0.5, 1.0, 1.5].map(s => (
-              <TouchFeedback
-                key={s}
-                style={[styles.speedPill, speed === s && styles.speedPillActive]}
-                onPress={() => handleChangeSpeed(s)}
-              >
-                <Text
-                  style={[
-                    styles.speedPillText,
-                    speed === s && styles.speedPillTextActive,
-                  ]}
-                >
-                  {s}x
-                </Text>
-              </TouchFeedback>
-            ))}
-          </View>
-        )}
-      </View>
-    </View>
+      <AppText variant="caption" color={palette.ink2}>
+        {t('avatar.note')}
+      </AppText>
+    </Card>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#040E1B',
-    borderRadius: 24,
-    padding: spacing.md,
-    borderWidth: 1.5,
-    borderColor: 'rgba(0, 229, 255, 0.35)',
-    shadowColor: '#002855',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  signBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 229, 255, 0.12)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 229, 255, 0.3)',
-  },
-  signNameText: {
-    color: '#00E5FF',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  angleSelector: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 10,
-    padding: 2,
-    gap: 2,
-  },
-  angleBtn: {
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  angleBtnActive: {
-    backgroundColor: '#00E5FF',
-  },
-  angleBtnText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#94A3B8',
-  },
-  angleBtnTextActive: {
-    color: '#001A38',
-    fontWeight: '800',
-  },
-  avatarStage: {
-    height: 205,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  syncCircleBackdrop: {
-    position: 'absolute',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ambientOuterRing: {
-    width: 170,
-    height: 170,
-    borderRadius: 85,
-    borderWidth: 1.5,
-    borderColor: 'rgba(0, 229, 255, 0.15)',
-    borderStyle: 'dashed',
-  },
-  avatarBodyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarHead: {
-    width: 66,
-    height: 70,
-    borderRadius: 33,
-    backgroundColor: '#F7D6BD',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 2,
-    borderWidth: 1.5,
-    borderColor: '#E8B998',
-  },
-  avatarHair: {
-    position: 'absolute',
-    top: -3,
-    width: 62,
-    height: 22,
-    backgroundColor: '#001A38',
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-  },
-  avatarEyes: {
-    flexDirection: 'row',
-    gap: 14,
-    marginTop: 6,
-  },
-  eye: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#001E3D',
-  },
-  avatarSmile: {
-    width: 12,
-    height: 6,
-    borderBottomWidth: 2,
-    borderBottomColor: '#B45309',
-    borderBottomLeftRadius: 6,
-    borderBottomRightRadius: 6,
-    marginTop: 4,
-  },
-  avatarTorso: {
-    width: 104,
-    height: 72,
-    backgroundColor: '#002855',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    marginTop: -8,
-    alignItems: 'center',
-    paddingTop: 8,
-    zIndex: 1,
-    borderWidth: 1.2,
-    borderColor: 'rgba(0, 229, 255, 0.4)',
-  },
-  collar: {
-    width: 22,
-    height: 10,
-    borderBottomLeftRadius: 10,
-    borderBottomRightRadius: 10,
-    backgroundColor: '#F7D6BD',
-  },
-  circuitGlow: {
-    marginTop: 6,
-  },
-  handsContainer: {
-    position: 'absolute',
-    top: 72,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: 204,
-    zIndex: 3,
-  },
-  navyHandBox: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: '#002855',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-    elevation: 4,
-  },
-  centerMotion: {
-    paddingHorizontal: 6,
-  },
-  techHandBox: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: '#041528',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#00E5FF',
-    elevation: 4,
-    position: 'relative',
-    shadowColor: '#00E5FF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 5,
-  },
-  circuitNode1: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#00E5FF',
-  },
-  circuitNode2: {
-    position: 'absolute',
-    bottom: -2,
-    left: -2,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#00E5FF',
-  },
-  subtitlePill: {
-    position: 'absolute',
-    bottom: 2,
-    backgroundColor: 'rgba(4, 18, 36, 0.92)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 229, 255, 0.35)',
-    width: '94%',
-  },
-  subtitleTextGroup: {
-    flex: 1,
-    marginRight: 8,
-  },
-  subtitleUrdu: {
-    color: '#00E5FF',
-    fontSize: 14,
-    fontWeight: '800',
-    textAlign: 'left',
-  },
-  subtitleEng: {
-    color: '#CBD5E1',
-    fontSize: 10,
-    marginTop: 1,
-  },
-  ttsSmallBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  ttsSmallBtnActive: {
-    backgroundColor: 'rgba(0, 229, 255, 0.25)',
-    borderColor: '#00E5FF',
-  },
-  timelineScrubber: {
-    marginTop: 10,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  scrubberLabel: {
-    fontSize: 9.5,
-    fontWeight: '800',
-    color: '#64748B',
-    marginBottom: 6,
-    letterSpacing: 0.5,
-  },
-  timelineRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  timelineChip: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-  },
-  timelineChipActive: {
-    backgroundColor: '#00E5FF',
-    borderColor: '#00E5FF',
-  },
-  timelineChipText: {
-    color: '#94A3B8',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  timelineChipTextActive: {
-    color: '#001A38',
-    fontWeight: '900',
-  },
-  controlsBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: spacing.sm,
-    paddingTop: spacing.xs,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  leftControls: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  playBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#00E5FF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  playBtnText: {
-    color: '#001A38',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  replayBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  replayBtnText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  speedRow: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',
-    borderRadius: 8,
-    padding: 2,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  speedPill: {
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  speedPillActive: {
-    backgroundColor: '#00E5FF',
-  },
-  speedPillText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#94A3B8',
-  },
-  speedPillTextActive: {
-    color: '#001A38',
-    fontWeight: '900',
-  },
+  card: { gap: spacing.md },
+  head: { alignItems: 'center', justifyContent: 'space-between', minHeight: 24 },
+  stage: { backgroundColor: palette.tealTint, borderRadius: radius.md, overflow: 'hidden' },
+  signRow: { alignItems: 'flex-start', gap: spacing.md },
+  flex: { flex: 1, gap: 2 },
+  chips: { flexWrap: 'wrap', gap: spacing.sm },
+  controls: { flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
+  control: { minHeight: 44, paddingHorizontal: spacing.md },
+  speed: { minWidth: 138, flexGrow: 1 },
 });

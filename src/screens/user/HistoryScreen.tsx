@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { RefreshControl, SectionList, StyleSheet, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { palette, spacing } from '../../theme';
+import { palette, spacing, useDirection } from '../../theme';
 import { AppText, Button, Card, Chip, EmptyState, IconBadge, Input, SectionLabel } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { usePreferences } from '../../context/PreferencesContext';
@@ -22,6 +22,7 @@ export default function HistoryScreen() {
   const { accessToken } = useAuth();
   const { prefs } = usePreferences();
   const { t, lang } = useI18n();
+  const { row } = useDirection();
   const [modality, setModality] = useState<Modality | undefined>();
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
@@ -91,7 +92,7 @@ export default function HistoryScreen() {
           {t('history.title')}
         </AppText>
         <Input icon="search-outline" raised placeholder={t('history.search')} value={search} onChangeText={setSearch} returnKeyType="search" accessibilityLabel={t('history.search')} />
-        <View style={styles.chips}>
+        <View style={[styles.chips, row]}>
           {filters.map((f) => (
             <Chip key={f.label} label={t(f.label)} selected={modality === f.value} onPress={() => setModality(f.value)} />
           ))}
@@ -115,7 +116,7 @@ export default function HistoryScreen() {
           const lines = linesFor(prefs.outputLanguage, item.previewEn, item.previewUr);
           return (
             <Card onPress={() => navigation.navigate('SessionDetail', { id: item.id })} accessibilityLabel={item.title} style={styles.card}>
-              <View style={styles.cardHead}>
+              <View style={[styles.cardHead, row]}>
                 <IconBadge icon={modalityIcon[item.modality]} tone={item.modality === 'sign_to_text' ? 'teal' : 'navy'} size="sm" />
                 <AppText variant="heading" numberOfLines={1} style={styles.flex}>
                   {item.title}
@@ -126,7 +127,7 @@ export default function HistoryScreen() {
               </View>
               {lines.en ? <AppText variant="bodySm">{lines.en}</AppText> : null}
               {lines.ur ? <AppText variant="urduSm">{lines.ur}</AppText> : null}
-              <View style={styles.meta}>
+              <View style={[styles.meta, row]}>
                 <AppText variant="caption" color={palette.muted}>
                   {t(`mod.${item.modality}` as StringKey)}
                 </AppText>
@@ -148,7 +149,7 @@ export default function HistoryScreen() {
           );
         }}
         ListEmptyComponent={
-          state === 'loading' ? null : state === 'error' ? (
+          state === 'loading' ? undefined : state === 'error' ? (
             <View style={styles.empty}>
               <EmptyState icon="cloud-offline-outline" title={t('history.loadError')} message={t('error.network')} />
               <Button title={t('common.retry')} variant="ghost" onPress={() => load('reset')} />
@@ -173,12 +174,12 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.canvas },
   head: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, gap: spacing.md, paddingBottom: spacing.sm },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  chips: { flexWrap: 'wrap', gap: spacing.sm },
   list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
   sectionHead: { paddingTop: spacing.sm },
   card: { gap: 6 },
-  cardHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm + 2, marginBottom: 2 },
-  meta: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  cardHead: { alignItems: 'center', gap: spacing.sm + 2, marginBottom: 2 },
+  meta: { flexWrap: 'wrap', gap: spacing.md },
   empty: { gap: spacing.md },
   flex: { flex: 1 },
 });

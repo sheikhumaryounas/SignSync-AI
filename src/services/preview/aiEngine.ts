@@ -1,6 +1,13 @@
 import { SignVocabularyItem, SignToken } from '../../types';
 import { mockVocabulary } from './mockData';
 
+// A vocabulary name can list synonyms ("Doctor / Physician"); the first one is the display name.
+export const signNameEn = (sign: SignVocabularyItem): string => sign.signNameEnglish.split('/')[0].trim();
+export const signNameUr = (sign: SignVocabularyItem): string => sign.signNameUrdu.split('/')[0].trim();
+export const signName = (sign: SignVocabularyItem, lang: 'en' | 'ur'): string => (lang === 'ur' ? signNameUr(sign) : signNameEn(sign));
+export const signDescription = (sign: SignVocabularyItem, lang: 'en' | 'ur'): string =>
+  lang === 'ur' ? sign.descriptionUrdu : sign.descriptionEnglish;
+
 export interface LandmarkPoint {
   x: number;
   y: number;
@@ -127,147 +134,124 @@ export const recognizeSignLandmarks = (
 
 /**
  * Language Correction API Engine
- * Assembles isolated keyword signs into natural Urdu & English sentences
+ * Assembles isolated keyword signs into natural Urdu & English sentences.
+ * A sentence pattern fires only when every sign it mentions was actually made.
  */
-export const correctSignSequence = (
-  signTokens: string[],
-  language: 'urdu' | 'english' | 'bilingual' = 'bilingual'
-): { urdu: string; english: string; rawTokens: string[] } => {
+export const correctSignSequence = (signTokens: string[]): { urdu: string; english: string; rawTokens: string[] } => {
   if (signTokens.length === 0) {
     return { urdu: '', english: '', rawTokens: [] };
   }
 
-  const normalized = signTokens.map(s => s.toLowerCase().trim());
-  const tokenSet = new Set(normalized);
+  const tokens = new Set(signTokens.map(s => s.toLowerCase().trim()));
+  const has = (...names: string[]) => names.every(n => tokens.has(n));
+  const only = (name: string) => tokens.size === 1 && tokens.has(name);
+  const sentence = (urdu: string, english: string) => ({ urdu, english, rawTokens: signTokens });
 
-  // Common sentence pattern reconstruction for PSL
-  if (tokenSet.has('hello') && tokenSet.has('doctor') && (tokenSet.has('help') || tokenSet.has('need'))) {
-    return {
-      urdu: 'السلام علیکم ڈاکٹر صاحب، مجھے فوری طبی امداد کی ضرورت ہے۔',
-      english: 'Assalam-o-Alaikum Doctor, I need urgent medical assistance.',
-      rawTokens: signTokens,
-    };
+  if (has('hello', 'doctor', 'emergency help')) {
+    return sentence('السلام علیکم ڈاکٹر صاحب، مجھے فوری طبی امداد کی ضرورت ہے۔', 'Assalam-o-Alaikum Doctor, I need urgent medical assistance.');
   }
+  if (has('where', 'hospital')) return sentence('قریبی ہسپتال کا راستہ کہاں ہے؟', 'Where is the nearest hospital?');
+  if (has('drinking water', 'please')) return sentence('براہ کرم مجھے پینے کا پانی دیں۔', 'Please give me some drinking water.');
+  if (has('food', 'drinking water')) return sentence('مجھے کھانے اور پانی کی ضرورت ہے۔', 'I need food and water.');
+  if (has('hello', 'how are you?')) return sentence('السلام علیکم! آپ کا کیا حال ہے؟', 'Assalam-o-Alaikum! How are you?');
+  if (has('pain', 'medicine')) return sentence('مجھے تکلیف ہے، کیا مجھے دوا مل سکتی ہے؟', 'I am in pain. Could I please get some medicine?');
+  if (only('thank you')) return sentence('آپ کا شکریہ۔', 'Thank you.');
+  if (only('drinking water')) return sentence('مجھے پینے کا پانی چاہیے۔', 'I need drinking water.');
+  if (only('food')) return sentence('مجھے کھانا چاہیے۔', 'I need food.');
+  if (only('pain')) return sentence('مجھے تکلیف ہے۔', 'I am in pain.');
+  if (only('medicine')) return sentence('مجھے دوا چاہیے۔', 'I need medicine.');
 
-  if (tokenSet.has('where') && tokenSet.has('hospital')) {
-    return {
-      urdu: 'قریبی ہسپتال کا راستہ کہاں ہے؟',
-      english: 'Where is the nearest hospital located?',
-      rawTokens: signTokens,
-    };
-  }
-
-  if (tokenSet.has('food') || tokenSet.has('hungry') || tokenSet.has('water')) {
-    if (tokenSet.has('water') && tokenSet.has('please')) {
-      return {
-        urdu: 'براہِ کرم مجھے پینے کا صاف پانی عنایت فرمائیں۔',
-        english: 'Please provide me with some drinking water.',
-        rawTokens: signTokens,
-      };
-    }
-    return {
-      urdu: 'مجھے بھوک لگی ہے اور کھانے پانی کی ضرورت ہے۔',
-      english: 'I am hungry and need food and water.',
-      rawTokens: signTokens,
-    };
-  }
-
-  if (tokenSet.has('hello') && tokenSet.has('how are you?')) {
-    return {
-      urdu: 'السلام علیکم! آپ کا کیا حال ہے؟ سب خیریت ہے؟',
-      english: 'Assalam-o-Alaikum! How are you doing today?',
-      rawTokens: signTokens,
-    };
-  }
-
-  if (tokenSet.has('thank you')) {
-    return {
-      urdu: 'آپ کی مدد کا بے حد شکریہ۔',
-      english: 'Thank you very much for your kind support.',
-      rawTokens: signTokens,
-    };
-  }
-
-  if (tokenSet.has('pain') || tokenSet.has('medicine')) {
-    return {
-      urdu: 'مجھے تکلیف ہے، کیا مجھے درد کی دوا مل سکتی ہے؟',
-      english: 'I am in pain, could I please get some medicine?',
-      rawTokens: signTokens,
-    };
-  }
-
-  // Generic fallback mapping
-  const urduWords: string[] = [];
-  const englishWords: string[] = [];
-
-  signTokens.forEach(token => {
-    const found = mockVocabulary.find(
-      v => v.signNameEnglish.toLowerCase().includes(token.toLowerCase()) || 
-           token.toLowerCase().includes(v.signNameEnglish.toLowerCase())
-    );
-    if (found) {
-      urduWords.push(found.signNameUrdu.split('/')[0].trim());
-      englishWords.push(found.signNameEnglish.split('/')[0].trim());
-    } else {
-      urduWords.push(token);
-      englishWords.push(token);
-    }
+  // No known pattern: list the signs in the order they were made.
+  const urduWords = signTokens.map(token => {
+    const found = mockVocabulary.find(v => signNameEn(v).toLowerCase() === token.toLowerCase().trim());
+    return found ? signNameUr(found) : token;
   });
 
-  return {
-    urdu: urduWords.join(' ') + '۔',
-    english: englishWords.join(' ') + '.',
-    rawTokens: signTokens,
-  };
+  return sentence(urduWords.join('، ') + '۔', signTokens.join(', ') + '.');
 };
 
-/**
- * Maps input text (typed or speech-to-text) to sign sequence
- */
-export const mapTextToSignSequence = (
-  inputText: string
-): { 
-  supportedSigns: SignVocabularyItem[]; 
-  unsupportedWords: string[]; 
-  fingerspelledWords: { word: string; letters: string[] }[] 
-} => {
-  const words = inputText
-    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, '')
+// Extra words that should trigger a sign, beyond its own English and Urdu names.
+const SIGN_ALIASES: Record<string, string[]> = {
+  psl_001: ['assalamualaikum', 'salam', 'سلام', 'وعلیکم السلام'],
+  psl_002: ['thanks', 'شکریہ'],
+  psl_003: ['برائے مہربانی'],
+  psl_004: ['emergency', 'help', 'مدد', 'ایمرجنسی'],
+  psl_005: [],
+  psl_006: [],
+  psl_007: ['water', 'پانی', 'پینے کا صاف پانی'],
+  psl_008: ['meal'],
+  psl_009: ['how are you', 'آپ کیسے ہیں', 'کیا حال ہے'],
+  psl_010: ['ہاں'],
+  psl_011: [],
+  psl_012: ['located'],
+  psl_013: [],
+  psl_014: ['درد'],
+  psl_015: [],
+  psl_016: [],
+  psl_017: [],
+  psl_018: [],
+};
+
+// Grammar words carry no sign of their own, so they are skipped rather than fingerspelled.
+const STOP_WORDS = new Set([
+  'i', 'me', 'my', 'you', 'your', 'we', 'am', 'are', 'is', 'was', 'be', 'the', 'a', 'an', 'in', 'on', 'at', 'to',
+  'for', 'of', 'and', 'or', 'can', 'could', 'will', 'would', 'it', 'this', 'that', 'there', 'too', 'very', 'some',
+  'with', 'want', 'need', 'do', 'does',
+  'کا', 'کی', 'کے', 'ہے', 'ہیں', 'ہوں', 'سے', 'کو', 'میں', 'نے', 'پر', 'اور', 'مجھے', 'میری', 'میرا', 'آپ', 'کیا',
+  'ہو', 'تھا', 'یہ', 'وہ', 'بھی', 'چاہیے', 'کر', 'سکتے', 'ضرورت', 'دیں',
+]);
+
+// Lowercases, removes Urdu vowel marks and splits on punctuation in either script.
+const toWords = (text: string): string[] =>
+  text
     .toLowerCase()
+    .replace(/[ً-ٰٟ]/g, '')
+    .replace(/[.,/#!$%^&*;:{}=\-_`~()?'"،۔؟]/g, ' ')
     .split(/\s+/)
     .filter(Boolean);
 
+// Every phrase that maps to a sign, longest first so "پینے کا پانی" wins over "پانی".
+const SIGN_PHRASES: { words: string[]; sign: SignVocabularyItem }[] = mockVocabulary
+  .flatMap(sign =>
+    [...sign.signNameEnglish.split('/'), ...sign.signNameUrdu.split('/'), ...(SIGN_ALIASES[sign.id] ?? [])].map(phrase => ({
+      words: toWords(phrase),
+      sign,
+    }))
+  )
+  .sort((a, b) => b.words.length - a.words.length);
+
+/**
+ * Maps input text (typed or speech-to-text) to a sign sequence. Matches whole words and
+ * phrases only, so "کا" can never trigger "پینے کا پانی" and "a" can never trigger "Family".
+ */
+export const mapTextToSignSequence = (
+  inputText: string
+): {
+  supportedSigns: SignVocabularyItem[];
+  unsupportedWords: string[];
+  fingerspelledWords: { word: string; letters: string[] }[];
+} => {
+  const words = toWords(inputText);
   const supportedSigns: SignVocabularyItem[] = [];
   const unsupportedWords: string[] = [];
   const fingerspelledWords: { word: string; letters: string[] }[] = [];
 
-  words.forEach(word => {
-    // Look up in dictionary
-    const match = mockVocabulary.find(item => {
-      const eng = item.signNameEnglish.toLowerCase();
-      const urdu = item.signNameUrdu.toLowerCase();
-      return eng.includes(word) || urdu.includes(word) || word.includes(item.id);
-    });
-
+  let i = 0;
+  while (i < words.length) {
+    const at = i;
+    const match = SIGN_PHRASES.find(p => p.words.length > 0 && p.words.every((w, j) => words[at + j] === w));
     if (match) {
-      if (!supportedSigns.find(s => s.id === match.id)) {
-        supportedSigns.push(match);
-      }
-    } else {
-      // Common stop words to ignore
-      if (!['is', 'the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'of', 'and', 'کا', 'کی', 'کے', 'ہے', 'ہیں', 'سے'].includes(word)) {
-        unsupportedWords.push(word);
-        fingerspelledWords.push({
-          word,
-          letters: word.toUpperCase().split(''),
-        });
-      }
+      if (!supportedSigns.some(s => s.id === match.sign.id)) supportedSigns.push(match.sign);
+      i += match.words.length;
+      continue;
     }
-  });
+    const word = words[i];
+    if (!STOP_WORDS.has(word)) {
+      unsupportedWords.push(word);
+      fingerspelledWords.push({ word, letters: word.toUpperCase().split('') });
+    }
+    i += 1;
+  }
 
-  return {
-    supportedSigns,
-    unsupportedWords,
-    fingerspelledWords,
-  };
+  return { supportedSigns, unsupportedWords, fingerspelledWords };
 };

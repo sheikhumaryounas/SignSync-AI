@@ -26,9 +26,21 @@ export function timeLabel(iso: string, lang: UiLanguage): string {
   return new Date(iso).toLocaleTimeString(locale(lang), { hour: 'numeric', minute: '2-digit' });
 }
 
-export function whenLabel(iso: string, t: T, lang: UiLanguage): string {
-  return `${dayLabel(iso, t, lang)}, ${timeLabel(iso, lang)}`;
+// Unicode isolates stop the bidi algorithm reordering a run against its neighbours. Without them
+// "6:12 pm · 4 signs" renders as "PM 46:12" inside an Urdu sentence.
+export const isolate = (text: string): string => `\u2068${text}\u2069`;
+
+export function metaLine(...parts: string[]): string {
+  return parts.map(isolate).join(' · ');
 }
+
+export function whenLabel(iso: string, t: T, lang: UiLanguage): string {
+  const separator = lang === 'ur' ? '، ' : ', ';
+  return `${isolate(dayLabel(iso, t, lang))}${separator}${isolate(timeLabel(iso, lang))}`;
+}
+
+const URDU_SCRIPT = /[\u0600-\u06FF]/;
+export const isUrduText = (text: string): boolean => URDU_SCRIPT.test(text);
 
 export function durationLabel(startIso: string, endIso: string): string {
   const sec = Math.max(0, Math.round((new Date(endIso).getTime() - new Date(startIso).getTime()) / 1000));

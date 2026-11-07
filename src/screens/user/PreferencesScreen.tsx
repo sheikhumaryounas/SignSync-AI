@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { palette, spacing } from '../../theme';
+import { palette, spacing, useDirection } from '../../theme';
 import {
   AppText,
   Button,
@@ -34,6 +34,7 @@ const channels: { key: ChannelKey; channel: FeedbackChannel; icon: IconName; tit
 
 export default function PreferencesScreen() {
   const { t } = useI18n();
+  const { row: dirRow } = useDirection();
   const { prefs, syncState, profiles, save, createProfile, deleteProfile, applyProfile } = usePreferences();
   const { notify, preview } = useFeedback();
   const [draft, setDraft] = useState<PreferenceSettings>(prefs);
@@ -101,13 +102,13 @@ export default function PreferencesScreen() {
   return (
     <Screen
       footer={
-        <View style={styles.footer}>
+        <View style={[styles.footer, dirRow]}>
           {dirty ? <Button title={t('prefs.discard')} variant="ghost" onPress={() => { setDraft(prefs); setBlocked(false); }} style={styles.flex} /> : null}
           <Button title={t('prefs.save')} onPress={onSave} disabled={!dirty} loading={saving} style={styles.flex} />
         </View>
       }
     >
-      <View style={styles.header}>
+      <View style={[styles.header, dirRow]}>
         <AppText variant="title" accessibilityRole="header">
           {t('prefs.title')}
         </AppText>
@@ -132,7 +133,7 @@ export default function PreferencesScreen() {
         <AppText variant="label">{t('prefs.feedback')}</AppText>
         <Card style={styles.list}>
           {channels.map((c, i) => (
-            <View key={c.key} style={[styles.row, i > 0 ? styles.divider : null]}>
+            <View key={c.key} style={[styles.row, dirRow, i > 0 ? styles.divider : null]}>
               <IconBadge icon={c.icon} size="sm" tone={draft[c.key] ? 'teal' : 'navy'} />
               <View style={styles.flex}>
                 <AppText variant="heading">{t(c.title)}</AppText>
@@ -145,14 +146,14 @@ export default function PreferencesScreen() {
         {blocked ? (
           <Notice tone="warning" message={t('prefs.ruleBlocked')} />
         ) : (
-          <View style={styles.hint}>
+          <View style={[styles.hint, dirRow]}>
             <Ionicons name="information-circle-outline" size={14} color={palette.ink2} />
             <AppText variant="caption">{t('prefs.ruleHint')}</AppText>
           </View>
         )}
       </View>
 
-      <Card style={styles.inline}>
+      <Card style={[styles.inline, dirRow as ViewStyle]}>
         <AppText variant="heading" style={styles.flex}>
           {t('prefs.textSize')}
         </AppText>
@@ -171,16 +172,20 @@ export default function PreferencesScreen() {
 
       <View style={styles.group}>
         <AppText variant="label">{t('prefs.profiles')}</AppText>
-        <View style={styles.chips}>
+        <View style={[styles.chips, dirRow]}>
           {profiles.map((p) => (
-            <Chip
-              key={p.id}
-              label={p.name}
-              tone={sameSettings(p.settings, prefs) ? 'teal' : 'default'}
-              onPress={() => onApply(p)}
-              onLongPress={() => setToDelete(p)}
-              accessibilityHint={t('prefs.profileHint')}
-            />
+            <View key={p.id} style={[styles.profile, dirRow]}>
+              <Chip label={p.name} tone={sameSettings(p.settings, prefs) ? 'teal' : 'default'} onPress={() => onApply(p)} accessibilityHint={t('prefs.profileHint')} />
+              <Pressable
+                onPress={() => setToDelete(p)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={t('prefs.deleteProfile', { name: p.name })}
+                style={styles.profileDelete}
+              >
+                <Ionicons name="close" size={16} color={palette.ink2} />
+              </Pressable>
+            </View>
           ))}
           {!naming ? <Chip label={t('prefs.newProfile')} tone="dashed" onPress={() => setNaming(true)} /> : null}
         </View>
@@ -198,7 +203,7 @@ export default function PreferencesScreen() {
               returnKeyType="done"
               onSubmitEditing={onCreateProfile}
             />
-            <View style={styles.footer}>
+            <View style={[styles.footer, dirRow]}>
               <Button title={t('common.cancel')} variant="ghost" onPress={() => { setNaming(false); setProfileError(undefined); }} style={styles.flex} />
               <Button title={t('prefs.profileSave')} variant="teal" onPress={onCreateProfile} style={styles.flex} />
             </View>
@@ -226,15 +231,17 @@ export default function PreferencesScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 40, gap: spacing.md },
+  header: { alignItems: 'center', justifyContent: 'space-between', minHeight: 40, gap: spacing.md },
   group: { gap: spacing.sm },
   list: { paddingVertical: spacing.xs },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm + 2 },
+  row: { alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm + 2 },
   divider: { borderTopWidth: 1, borderTopColor: palette.line2 },
-  hint: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  inline: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm },
+  hint: { alignItems: 'center', gap: 6 },
+  inline: { alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm },
   sizeSeg: { width: 160 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  footer: { flexDirection: 'row', gap: spacing.md },
+  chips: { flexWrap: 'wrap', gap: spacing.sm },
+  profile: { alignItems: 'center', gap: 2 },
+  profileDelete: { width: 28, height: 36, alignItems: 'center', justifyContent: 'center' },
+  footer: { gap: spacing.md },
   flex: { flex: 1 },
 });

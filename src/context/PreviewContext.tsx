@@ -4,23 +4,21 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import * as Speech from 'expo-speech';
 import { CommunicationSession, SignVocabularyItem, UserPreference } from '../types';
-import { lightColors, ThemePalette } from '../theme';
 import { api, Modality, NewSession } from '../services/api';
 import { defaultUserPreferences, mockVocabulary } from '../services/preview/mockData';
 import { useAuth } from './AuthContext';
 import { usePreferences } from './PreferencesContext';
-import { useI18n } from '../i18n';
+import { isUrduText } from '../utils/format';
 
 type LegacySession = Omit<CommunicationSession, 'id' | 'timestamp'>;
 
 interface PreviewValue {
-  theme: ThemePalette;
-  isDark: boolean;
   preferences: UserPreference;
   vocabulary: SignVocabularyItem[];
   addSession: (session: LegacySession) => CommunicationSession;
   isSpeaking: boolean;
-  speakText: (text: string) => void;
+  /** `auto` marks speech the user did not ask for; it respects the audio-feedback setting. */
+  speakText: (text: string, options?: { auto?: boolean }) => void;
   stopSpeaking: () => void;
 }
 
@@ -50,7 +48,8 @@ function toNewSession(s: LegacySession): NewSession {
         inputMode,
         outputEn: s.outputTextEnglish,
         outputUr: s.outputTextUrdu,
-        signSequence: s.signSequence.map((sign) => ({ sign: sign.toUpperCase(), confidence: signed ? s.averageConfidence : undefined })),
+        // Only camera recognition produces a real confidence score.
+        signSequence: s.signSequence.map((sign) => ({ sign: sign.toUpperCase(), confidence: s.modality === 'sign_to_text' ? s.averageConfidence : undefined })),
         createdAt: started.toISOString(),
       },
     ],
@@ -60,7 +59,6 @@ function toNewSession(s: LegacySession): NewSession {
 export function PreviewProvider({ children }: { children: React.ReactNode }) {
   const { user, accessToken } = useAuth();
   const { prefs } = usePreferences();
-  const { lang } = useI18n();
   const [isSpeaking, setIsSpeaking] = useState(false);
 
   const preferences = useMemo<UserPreference>(
@@ -77,17 +75,19 @@ export function PreviewProvider({ children }: { children: React.ReactNode }) {
   );
 
   const speakText = useCallback(
-    (text: string) => {
-      if (!prefs.audioFeedback) return;
+    (text: string, options?: { auto?: boolean }) => {
+      // Audio feedback is off by default for Deaf users, who still need "Speak aloud" to talk to
+      // a hearing person, so a deliberate tap always speaks.
+      if (options?.auto && !prefs.audioFeedback) return;
       setIsSpeaking(true);
       Speech.speak(text, {
-        language: lang === 'ur' ? 'ur-PK' : 'en-US',
+        language: isUrduText(text) ? 'ur-PK' : 'en-US',
         onDone: () => setIsSpeaking(false),
         onStopped: () => setIsSpeaking(false),
         onError: () => setIsSpeaking(false),
       });
     },
-    [prefs.audioFeedback, lang]
+    [prefs.audioFeedback]
   );
 
   const stopSpeaking = useCallback(() => {
@@ -104,7 +104,7 @@ export function PreviewProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ theme: lightColors, isDark: false, preferences, vocabulary: mockVocabulary, addSession, isSpeaking, speakText, stopSpeaking }),
+    () => ({ preferences, vocabulary: mockVocabulary, addSession, isSpeaking, speakText, stopSpeaking }),
     [preferences, addSession, isSpeaking, speakText, stopSpeaking]
   );
 

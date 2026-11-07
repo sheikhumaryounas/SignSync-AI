@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { OutputLanguage, RootStackParamList } from '../../types';
-import { fonts, palette, radius, shadow, spacing } from '../../theme';
+import { fonts, palette, radius, shadow, spacing, useDirection } from '../../theme';
 import { AppText, Button, IconBadge, IconName, Input, Screen, SegmentedControl } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { apiErrorText, StringKey, useI18n } from '../../i18n';
@@ -25,6 +25,7 @@ const roles: { role: SelfRegisterRole; icon: IconName; title: StringKey; who: St
 ];
 
 export default function RegisterScreen({ navigation }: Props) {
+  const { row, start } = useDirection();
   const { t } = useI18n();
   const auth = useAuth();
   const [step, setStep] = useState<1 | 2>(1);
@@ -91,7 +92,7 @@ export default function RegisterScreen({ navigation }: Props) {
         footer={
           <>
             <Button title={t('register.continue')} iconRight="arrow-forward" onPress={onContinue} />
-            <View style={styles.footerRow}>
+            <View style={[styles.footerRow, row]}>
               <AppText variant="bodySm" color={palette.ink2}>
                 {t('register.footer')}{' '}
               </AppText>
@@ -143,7 +144,7 @@ export default function RegisterScreen({ navigation }: Props) {
             textContentType="emailAddress"
           />
           {emailTaken ? (
-            <Pressable onPress={() => navigation.navigate('Login')} hitSlop={8} style={styles.takenLink} accessibilityRole="link">
+            <Pressable onPress={() => navigation.navigate('Login')} hitSlop={8} style={{ alignSelf: start }} accessibilityRole="link">
               <AppText variant="caption" color={palette.tealInk} style={styles.link}>
                 {t('error.email_taken_action')}
               </AppText>
@@ -206,7 +207,7 @@ export default function RegisterScreen({ navigation }: Props) {
               accessibilityRole="radio"
               accessibilityState={{ selected: on }}
               accessibilityLabel={`${t(r.title)}, ${t(r.who)}. ${t(r.defaults)}`}
-              style={[styles.role, on ? styles.roleOn : null]}
+              style={[styles.role, row, on ? styles.roleOn : null]}
             >
               <IconBadge icon={r.icon} tone={on ? 'teal' : 'navy'} />
               <View style={styles.roleText}>
@@ -259,8 +260,7 @@ const styles = StyleSheet.create({
   title: { gap: spacing.xs },
   gapSm: { gap: spacing.sm },
   link: { fontFamily: fonts.semibold },
-  takenLink: { alignSelf: 'flex-start' },
-  footerRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' },
+  footerRow: { justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' },
   meter: { flexDirection: 'row', gap: spacing.xs },
   bar: { flex: 1, height: 4, borderRadius: 2 },
   progress: { flexDirection: 'row', gap: 6, marginTop: -spacing.sm },
@@ -268,7 +268,6 @@ const styles = StyleSheet.create({
   progressOn: { backgroundColor: palette.teal },
   roles: { gap: spacing.md },
   role: {
-    flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
     padding: spacing.md,

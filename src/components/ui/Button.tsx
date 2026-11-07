@@ -1,7 +1,7 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { palette, radius, spacing } from '../../theme';
+import { palette, radius, spacing, useDirection } from '../../theme';
 import { AppText } from './AppText';
 import { IconName } from './icons';
 
@@ -41,6 +41,7 @@ export function Button({
   style,
   accessibilityHint,
 }: ButtonProps) {
+  const { row, arrowForward } = useDirection();
   const inactive = disabled || loading;
   const tone = inactive ? { bg: palette.line2, fg: palette.muted } : tones[variant];
 
@@ -64,12 +65,12 @@ export function Button({
       {loading ? (
         <ActivityIndicator color={tone.fg} />
       ) : (
-        <View style={styles.row}>
+        <View style={[styles.row, row]}>
           {icon ? <Ionicons name={icon} size={16} color={tone.fg} /> : null}
           <AppText variant="button" color={tone.fg}>
             {title}
           </AppText>
-          {iconRight ? <Ionicons name={iconRight} size={16} color={tone.fg} /> : null}
+          {iconRight ? <Ionicons name={iconRight === 'arrow-forward' ? arrowForward : iconRight} size={16} color={tone.fg} /> : null}
         </View>
       )}
     </Pressable>
@@ -85,6 +86,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   full: { alignSelf: 'stretch' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  row: { alignItems: 'center', gap: spacing.sm },
   pressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
 });

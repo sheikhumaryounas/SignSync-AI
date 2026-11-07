@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { fonts, palette, radius } from '../../theme';
+import { fonts, palette, radius, useDirection } from '../../theme';
 import { AppText } from './AppText';
 
 export type StatusTone = 'success' | 'warning' | 'muted' | 'info' | 'live' | 'error';
@@ -16,8 +16,9 @@ const tones: Record<StatusTone, { bg: string; fg: string }> = {
 
 export function StatusPill({ label, tone = 'success' }: { label: string; tone?: StatusTone }) {
   const t = tones[tone];
+  const { row, start } = useDirection();
   return (
-    <View style={[styles.pill, { backgroundColor: t.bg }]}>
+    <View style={[styles.pill, row, { backgroundColor: t.bg, alignSelf: start }]}>
       <View style={[styles.dot, { backgroundColor: t.fg }]} />
       <AppText style={[styles.text, { color: t.fg }]}>{label}</AppText>
     </View>
@@ -26,14 +27,12 @@ export function StatusPill({ label, tone = 'success' }: { label: string; tone?: 
 
 const styles = StyleSheet.create({
   pill: {
-    flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    paddingHorizontal: 8,
-    height: 22,
+    paddingHorizontal: 9,
+    minHeight: 24,
     borderRadius: radius.pill,
-    alignSelf: 'flex-start',
   },
   dot: { width: 5, height: 5, borderRadius: 3 },
-  text: { fontFamily: fonts.semibold, fontSize: 10, lineHeight: 13 },
+  text: { fontFamily: fonts.semibold, fontSize: 12, lineHeight: 16 },
 });

@@ -1,5 +1,15 @@
 // Mock data for the FYP-2 preview screens only. Committed FYP-1 modules use services/api.
 import { UserPreference, SignVocabularyItem } from '../../types';
+import type { StringKey } from '../../i18n/en';
+
+export const quickPhrases: { label: StringKey; ur: string; en: string }[] = [
+  { label: 'phrase.greeting', ur: 'السلام علیکم! آپ کا کیا حال ہے؟', en: 'Assalam-o-Alaikum! How are you?' },
+  { label: 'phrase.hospital', ur: 'ہسپتال کا راستہ کہاں ہے؟', en: 'Where is the hospital?' },
+  { label: 'phrase.water', ur: 'براہ کرم پینے کا پانی دیں', en: 'Please give me drinking water' },
+  { label: 'phrase.doctor', ur: 'مجھے ڈاکٹر کی ضرورت ہے', en: 'I need a doctor' },
+  { label: 'phrase.help', ur: 'مجھے فوری مدد کی ضرورت ہے', en: 'I need emergency help' },
+  { label: 'phrase.food', ur: 'مجھے کھانا اور پانی چاہیے', en: 'I need food and water' },
+];
 
 export const defaultUserPreferences: UserPreference = {
   userId: 'usr_deaf_01',

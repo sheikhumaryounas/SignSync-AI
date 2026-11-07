@@ -34,7 +34,7 @@ export function Chip({ label, selected = false, tone = 'default', onPress, onLon
       disabled={!onPress && !onLongPress}
       accessibilityRole={onPress ? 'button' : 'text'}
       accessibilityState={onPress ? { selected } : undefined}
-      hitSlop={6}
+      hitSlop={4}
       style={({ pressed }) => [styles.base, look, pressed ? { opacity: 0.8 } : null]}
     >
       <AppText variant="caption" color={color} style={styles.text}>
@@ -46,7 +46,7 @@ export function Chip({ label, selected = false, tone = 'default', onPress, onLon
 
 const styles = StyleSheet.create({
   base: {
-    minHeight: 30,
+    minHeight: 36, // 44 px touch target with hitSlop
     paddingHorizontal: spacing.md,
     borderRadius: radius.pill,
     alignItems: 'center',

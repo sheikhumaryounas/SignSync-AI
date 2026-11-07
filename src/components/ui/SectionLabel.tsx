@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { fonts, palette } from '../../theme';
+import { fonts, palette, useDirection } from '../../theme';
 import { AppText } from './AppText';
 
 interface SectionLabelProps {
@@ -10,8 +10,9 @@ interface SectionLabelProps {
 }
 
 export function SectionLabel({ label, actionLabel, onAction }: SectionLabelProps) {
+  const { row } = useDirection();
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, row]}>
       <AppText variant="label" accessibilityRole="header">
         {label}
       </AppText>
@@ -27,5 +28,5 @@ export function SectionLabel({ label, actionLabel, onAction }: SectionLabelProps
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  row: { alignItems: 'center', justifyContent: 'space-between' },
 });

@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { fonts, palette, shadow, spacing } from '../theme';
+import { fonts, palette, shadow, spacing, useDirection } from '../theme';
 import { AppText, IconName } from '../components/ui';
 import { StringKey, useI18n } from '../i18n';
 
@@ -16,8 +16,9 @@ export interface TabMeta {
 export function makeTabBar(meta: Record<string, TabMeta>) {
   return function AppTabBar({ state, navigation, insets }: BottomTabBarProps) {
     const { t } = useI18n();
+    const { row } = useDirection();
     return (
-      <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
+      <View style={[styles.bar, row, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
         {state.routes.map((route, index) => {
           const focused = state.index === index;
           const m = meta[route.name];
@@ -37,7 +38,7 @@ export function makeTabBar(meta: Record<string, TabMeta>) {
               <View style={[styles.pill, focused ? styles.pillOn : null]}>
                 <Ionicons name={focused ? m.iconActive : m.icon} size={20} color={focused ? palette.tealInk : palette.muted} />
               </View>
-              <AppText style={[styles.label, { color: focused ? palette.navy : palette.muted, fontFamily: focused ? fonts.semibold : fonts.medium }]}>
+              <AppText align="center" style={[styles.label, { color: focused ? palette.navy : palette.muted, fontFamily: focused ? fonts.semibold : fonts.medium }]}>
                 {t(m.label)}
               </AppText>
             </Pressable>
@@ -50,14 +51,13 @@ export function makeTabBar(meta: Record<string, TabMeta>) {
 
 const styles = StyleSheet.create({
   bar: {
-    flexDirection: 'row',
     backgroundColor: palette.surface,
     paddingTop: spacing.sm,
     paddingHorizontal: spacing.sm,
     boxShadow: shadow.bar,
   },
   item: { flex: 1, alignItems: 'center', gap: 3, minHeight: 48 },
-  pill: { width: 52, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  pill: { width: 40, height: 26, borderRadius: 13, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   pillOn: { backgroundColor: palette.tealSoft },
-  label: { fontSize: 10.5, lineHeight: 13 },
+  label: { fontSize: 12, lineHeight: 16 },
 });
