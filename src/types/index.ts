@@ -101,4 +101,5 @@ export type RootStackParamList = {
   // Users reach settings from Profile and Home; admins keep it as a tab.
   Preferences: undefined;
   EditProfile: undefined;
+  HelpSupport: undefined;
 };

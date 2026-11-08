@@ -16,13 +16,12 @@ export default function ProfileScreen() {
   const [confirming, setConfirming] = useState(false);
 
   if (!user) return null;
-  const isAdmin = user.role === 'admin';
   const since = new Date(user.createdAt).toLocaleDateString(lang === 'ur' ? 'ur-PK' : 'en-PK', { month: 'long', year: 'numeric' });
 
   const rows: { icon: IconName; label: StringKey; onPress: () => void }[] = [
     { icon: 'create-outline', label: 'editProfile.title', onPress: () => navigation.navigate('EditProfile') },
     { icon: 'options-outline', label: 'profile.preferences', onPress: () => navigation.navigate('Preferences') },
-    ...(isAdmin ? [] : [{ icon: 'time-outline' as IconName, label: 'profile.history' as StringKey, onPress: () => navigation.navigate('CommunicationHistory') }]),
+    { icon: 'help-circle-outline', label: 'profile.help', onPress: () => navigation.navigate('HelpSupport') },
   ];
 
   return (

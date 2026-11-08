@@ -13,6 +13,7 @@ import TextToSignScreen from '../screens/preview/TextToSignScreen';
 import PreferencesScreen from '../screens/user/PreferencesScreen';
 import SessionDetailScreen from '../screens/user/SessionDetailScreen';
 import EditProfileScreen from '../screens/user/EditProfileScreen';
+import HelpSupportScreen from '../screens/user/HelpSupportScreen';
 import CompareVersionsScreen from '../screens/admin/CompareVersionsScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -45,6 +46,7 @@ export default function RootNavigator() {
           )}
           <Stack.Screen name="SessionDetail" component={SessionDetailScreen} />
           <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+          <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
           {/* FYP-2 previews, still on mock logic */}
           <Stack.Screen name="SignRecognition" component={SignRecognitionScreen} />
           <Stack.Screen name="VoiceSign" component={VoiceSignScreen} />
