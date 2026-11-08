@@ -148,7 +148,8 @@ const styles = themedStyles(() => ({
   prefRow: { alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
   translateHead: { alignItems: 'center', justifyContent: 'space-between' },
   content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
-  grid: { flexWrap: 'wrap', gap: spacing.sm },
-  mode: { width: '48%', flexGrow: 1, gap: spacing.sm + 2 },
+  grid: { flexWrap: 'wrap', justifyContent: 'space-between', rowGap: spacing.sm },
+  // Fixed width (no flexGrow) so a lone card on the last row stays the same size as the rest.
+  mode: { width: '48%', gap: spacing.sm + 2 },
   recent: { alignItems: 'center', gap: spacing.md },
 }));
