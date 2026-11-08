@@ -1,6 +1,6 @@
 import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
-import { colors } from '../theme';
+import { colors, themedStyles } from '../theme';
 
 interface AppLogoProps {
   size?: 'small' | 'medium' | 'large';
@@ -90,7 +90,7 @@ export const AppLogo: React.FC<AppLogoProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -133,4 +133,4 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     textAlign: 'center',
   },
-});
+}));

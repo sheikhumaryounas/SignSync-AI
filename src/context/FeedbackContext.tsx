@@ -3,10 +3,11 @@ import { Animated, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import * as Speech from 'expo-speech';
-import { palette, spacing } from '../theme';
+import { palette, spacing, themedStyles } from '../theme';
 import { Notice, NoticeTone } from '../components/ui/Notice';
 import { usePreferences } from './PreferencesContext';
 import { useI18n } from '../i18n';
+import { useThemeMode } from './ThemeContext';
 
 export interface FeedbackEvent {
   tone: NoticeTone;
@@ -37,6 +38,7 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
   const { prefs } = usePreferences();
   const { lang } = useI18n();
   const insets = useSafeAreaInsets();
+  useThemeMode(); // re-render the toast when the theme changes
   const [toast, setToast] = useState<FeedbackEvent | null>(null);
   const y = useRef(new Animated.Value(-120)).current;
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -112,7 +114,7 @@ export function useFeedback(): FeedbackValue {
   return ctx;
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   toast: {
     position: 'absolute',
     left: spacing.lg,
@@ -121,4 +123,4 @@ const styles = StyleSheet.create({
     backgroundColor: palette.surface,
     boxShadow: '0px 12px 28px -10px rgba(0, 35, 88, 0.35)',
   },
-});
+}));

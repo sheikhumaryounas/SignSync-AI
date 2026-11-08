@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { palette, spacing, useDirection } from '../../theme';
+import { palette, spacing, useDirection, themedStyles } from '../../theme';
 import { RootStackParamList } from '../../types';
 import { AppText, Button, Card, Chip, Input, Screen, SegmentedControl } from '../../components/ui';
 import { usePreview } from '../../context/PreviewContext';
@@ -140,7 +140,7 @@ export default function VoiceSignScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   content: { paddingTop: spacing.md },
   card: { gap: spacing.md },
   micArea: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm },
@@ -149,4 +149,4 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.85 },
   chips: { flexWrap: 'wrap', gap: spacing.sm },
   save: { minHeight: 44, paddingHorizontal: spacing.md },
-});
+}));

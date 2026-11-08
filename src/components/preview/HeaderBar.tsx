@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { palette, spacing, useDirection } from '../../theme';
+import { palette, spacing, useDirection, themedStyles } from '../../theme';
 import { usePreview } from '../../context/PreviewContext';
 import { AppText, IconButton, StatusPill } from '../ui';
 import { useI18n } from '../../i18n';
@@ -34,7 +34,7 @@ export function HeaderBar({ title, onBack, rightAction }: HeaderBarProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   header: {
     alignItems: 'center',
     gap: spacing.md,
@@ -46,4 +46,4 @@ const styles = StyleSheet.create({
   },
   titles: { flex: 1, minWidth: 0, gap: 4 },
   pills: { flexWrap: 'wrap', gap: spacing.xs },
-});
+}));

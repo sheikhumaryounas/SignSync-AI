@@ -20,7 +20,7 @@ export function IconBadge({ icon, tone = 'teal', size = 'md' }: IconBadgeProps) 
         { backgroundColor: tone === 'teal' ? palette.tealSoft : palette.navySoft },
       ]}
     >
-      <Ionicons name={icon} size={size === 'md' ? 20 : 16} color={tone === 'teal' ? palette.tealInk : palette.navy} />
+      <Ionicons name={icon} size={size === 'md' ? 20 : 16} color={tone === 'teal' ? palette.tealInk : palette.navyText} />
     </View>
   );
 }

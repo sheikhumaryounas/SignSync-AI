@@ -19,7 +19,7 @@ const TabBar = makeTabBar({
 export default function UserTabs() {
   return (
     // tabBar is called inside a render prop, so render it as an element to keep its hooks valid.
-    <Tab.Navigator screenOptions={{ headerShown: false }} tabBar={(props) => <TabBar {...props} />}>
+    <Tab.Navigator screenOptions={{ headerShown: false, animation: 'shift' }} tabBar={(props) => <TabBar {...props} />}>
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="CommunicationHistory" component={HistoryScreen} />
       <Tab.Screen name="Preferences" component={PreferencesScreen} />

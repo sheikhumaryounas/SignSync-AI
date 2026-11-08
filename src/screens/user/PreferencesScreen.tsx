@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { palette, spacing, useDirection } from '../../theme';
+import { palette, spacing, useDirection, themedStyles } from '../../theme';
 import {
   AppText,
   Button,
@@ -23,6 +23,7 @@ import { FeedbackChannel, useFeedback } from '../../context/FeedbackContext';
 import { apiErrorText, StringKey, useI18n } from '../../i18n';
 import { hasFeedbackChannel, PreferenceProfile, PreferenceSettings, sameSettings } from '../../services/api';
 import { OutputLanguage } from '../../types';
+import { useThemeMode } from '../../context/ThemeContext';
 
 type ChannelKey = 'visualFeedback' | 'audioFeedback' | 'hapticFeedback';
 
@@ -35,9 +36,12 @@ const channels: { key: ChannelKey; channel: FeedbackChannel; icon: IconName; tit
 export default function PreferencesScreen() {
   const { t } = useI18n();
   const { row: dirRow } = useDirection();
-  const { prefs, syncState, profiles, save, createProfile, deleteProfile, applyProfile } = usePreferences();
+  const { prefs, syncState, profiles, save, createProfile, deleteProfile, applyProfile, reload } = usePreferences();
   const { notify, preview } = useFeedback();
+  const { isDark, setMode } = useThemeMode();
   const [draft, setDraft] = useState<PreferenceSettings>(prefs);
+  // Dark mode is part of the draft: it only takes effect when the user taps Save.
+  const [darkDraft, setDarkDraft] = useState(isDark);
   const [blocked, setBlocked] = useState(false);
   const [saving, setSaving] = useState(false);
   const [naming, setNaming] = useState(false);
@@ -45,11 +49,13 @@ export default function PreferencesScreen() {
   const [profileError, setProfileError] = useState<string>();
   const [toDelete, setToDelete] = useState<PreferenceProfile | null>(null);
 
-  const dirty = !sameSettings(draft, prefs);
+  const settingsDirty = !sameSettings(draft, prefs);
+  const themeDirty = darkDraft !== isDark;
+  const dirty = settingsDirty || themeDirty;
 
   // Follow changes made elsewhere (initial load, applying a profile) while nothing is being edited.
   useEffect(() => {
-    if (!dirty) setDraft(prefs);
+    if (!settingsDirty) setDraft(prefs);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prefs]);
 
@@ -67,8 +73,10 @@ export default function PreferencesScreen() {
 
   const onSave = async () => {
     setSaving(true);
-    const ok = await save(draft);
+    const ok = settingsDirty ? await save(draft) : true;
     setSaving(false);
+    // Applied last: switching theme repaints (remounts) the screens.
+    if (themeDirty) setMode(darkDraft ? 'dark' : 'light');
     notify(ok ? { tone: 'success', message: t('prefs.saved') } : { tone: 'warning', message: t('prefs.saveFailed') });
   };
 
@@ -101,9 +109,10 @@ export default function PreferencesScreen() {
 
   return (
     <Screen
+      onRefresh={reload}
       footer={
         <View style={[styles.footer, dirRow]}>
-          {dirty ? <Button title={t('prefs.discard')} variant="ghost" onPress={() => { setDraft(prefs); setBlocked(false); }} style={styles.flex} /> : null}
+          {dirty ? <Button title={t('prefs.discard')} variant="ghost" onPress={() => { setDraft(prefs); setDarkDraft(isDark); setBlocked(false); }} style={styles.flex} /> : null}
           <Button title={t('prefs.save')} onPress={onSave} disabled={!dirty} loading={saving} style={styles.flex} />
         </View>
       }
@@ -153,22 +162,34 @@ export default function PreferencesScreen() {
         )}
       </View>
 
-      <Card style={[styles.inline, dirRow as ViewStyle]}>
-        <AppText variant="heading" style={styles.flex}>
-          {t('prefs.textSize')}
-        </AppText>
-        <SegmentedControl<'normal' | 'large'>
+      <Card style={styles.sizeCard}>
+        <AppText variant="heading">{t('prefs.textSize')}</AppText>
+        <SegmentedControl<PreferenceSettings['fontSize']>
           size="sm"
-          style={styles.sizeSeg}
           accessibilityLabel={t('prefs.textSize')}
           value={draft.fontSize}
           onChange={(v) => setDraft({ ...draft, fontSize: v })}
           options={[
+            { value: 'small', label: t('prefs.small') },
             { value: 'normal', label: t('prefs.normal') },
             { value: 'large', label: t('prefs.large') },
           ]}
         />
       </Card>
+
+      <View style={styles.group}>
+        <AppText variant="label">{t('prefs.appearance')}</AppText>
+        <Card style={styles.list}>
+          <View style={[styles.row, dirRow]}>
+            <IconBadge icon={darkDraft ? 'moon' : 'moon-outline'} size="sm" tone={darkDraft ? 'teal' : 'navy'} />
+            <View style={styles.flex}>
+              <AppText variant="heading">{t('prefs.darkMode')}</AppText>
+              <AppText variant="caption">{t('prefs.darkModeDesc')}</AppText>
+            </View>
+            <Toggle value={darkDraft} onValueChange={setDarkDraft} accessibilityLabel={t('prefs.darkMode')} />
+          </View>
+        </Card>
+      </View>
 
       <View style={styles.group}>
         <AppText variant="label">{t('prefs.profiles')}</AppText>
@@ -230,18 +251,17 @@ export default function PreferencesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   header: { alignItems: 'center', justifyContent: 'space-between', minHeight: 40, gap: spacing.md },
   group: { gap: spacing.sm },
   list: { paddingVertical: spacing.xs },
   row: { alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm + 2 },
   divider: { borderTopWidth: 1, borderTopColor: palette.line2 },
   hint: { alignItems: 'center', gap: 6 },
-  inline: { alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm },
-  sizeSeg: { width: 160 },
+  sizeCard: { gap: spacing.sm },
   chips: { flexWrap: 'wrap', gap: spacing.sm },
   profile: { alignItems: 'center', gap: 2 },
   profileDelete: { width: 28, height: 36, alignItems: 'center', justifyContent: 'center' },
   footer: { gap: spacing.md },
   flex: { flex: 1 },
-});
+}));

@@ -1,9 +1,9 @@
 import React, { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, View, ViewStyle } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View, ViewStyle } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { palette, spacing, useDirection } from '../../theme';
-import { AppText, BrandBand, Card, Chip, EmptyState, IconBadge, IconName, SectionLabel, StatusPill } from '../../components/ui';
+import { palette, spacing, useDirection, themedStyles } from '../../theme';
+import { AppText, Avatar, BrandBand, Card, Chip, Stagger, usePullRefresh, EmptyState, IconBadge, IconName, SectionLabel, StatusPill } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { usePreferences } from '../../context/PreferencesContext';
 import { StringKey, useI18n } from '../../i18n';
@@ -22,8 +22,8 @@ const modes: { route: PreviewRoute; icon: IconName; label: StringKey }[] = [
 export default function HomeScreen() {
   // Tab screen that opens sibling tabs and root-stack screens, so it uses the untyped hook.
   const navigation = useNavigation<any>();
-  const { user, accessToken } = useAuth();
-  const { prefs } = usePreferences();
+  const { user, accessToken, refreshUser } = useAuth();
+  const { prefs, reload: reloadPrefs } = usePreferences();
   const { t, lang } = useI18n();
   const { row, start, forward } = useDirection();
   const [recent, setRecent] = useState<SessionSummary[] | null>(null);
@@ -43,18 +43,38 @@ export default function HomeScreen() {
     }, [accessToken])
   );
 
+  // Pull down: refresh recent conversations, the profile (name/photo) and preferences.
+  const refreshControl = usePullRefresh(async () => {
+    if (!accessToken) return;
+    await Promise.allSettled([
+      api.history.list(accessToken, { limit: 3 }).then((page) => setRecent(page.items)),
+      refreshUser(),
+      reloadPrefs(),
+    ]);
+  });
+
   const firstName = user?.name.split(' ')[0] ?? '';
 
   return (
     <View style={styles.root}>
       <BrandBand>
-        <View>
-          <AppText variant="caption" color={palette.onNavyMuted}>
-            {t(greetingKey())}
-          </AppText>
-          <AppText variant="title" color={palette.onNavy} numberOfLines={1}>
-            {firstName}
-          </AppText>
+        <View style={[styles.greetRow, row]}>
+          <Pressable
+            onPress={() => navigation.navigate('Profile')}
+            accessibilityRole="button"
+            accessibilityLabel={t('tab.profile')}
+            hitSlop={6}
+          >
+            <Avatar name={user?.name ?? ''} uri={user?.avatarUrl} size={48} ring={palette.tealOnNavy} />
+          </Pressable>
+          <View style={styles.grow}>
+            <AppText variant="caption" color={palette.onNavyMuted}>
+              {t(greetingKey())}
+            </AppText>
+            <AppText variant="title" color={palette.onNavy} numberOfLines={1}>
+              {firstName}
+            </AppText>
+          </View>
         </View>
         <View style={[styles.prefRow, row]}>
           <Chip label={outputLanguageLabel(prefs.outputLanguage, t)} tone="glass" onPress={() => navigation.navigate('Preferences')} accessibilityHint={t('home.editPrefs')} />
@@ -62,7 +82,8 @@ export default function HomeScreen() {
         </View>
       </BrandBand>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={refreshControl}>
+        <Stagger delay={120}>
         <View style={[styles.translateHead, row]}>
           <AppText variant="label" accessibilityRole="header">
             {t('home.translate')}
@@ -115,18 +136,20 @@ export default function HomeScreen() {
             </Card>
           ))
         )}
+        </Stagger>
       </ScrollView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   root: { flex: 1, backgroundColor: palette.canvas },
   grow: { flex: 1, minWidth: 0 },
+  greetRow: { alignItems: 'center', gap: spacing.md },
   prefRow: { alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
   translateHead: { alignItems: 'center', justifyContent: 'space-between' },
   content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
   grid: { flexWrap: 'wrap', gap: spacing.sm },
   mode: { width: '48%', flexGrow: 1, gap: spacing.sm + 2 },
   recent: { alignItems: 'center', gap: spacing.md },
-});
+}));

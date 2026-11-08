@@ -1,5 +1,5 @@
 import { User } from '../../types';
-import { AuthSession, RegisterInput } from './types';
+import { AuthSession, ProfileUpdate, RegisterInput } from './types';
 
 // Contract for EUC5 (SSD-1). Implemented by the mock adapter now and the HTTP adapter in Phase D1.
 export interface AuthApi {
@@ -7,6 +7,8 @@ export interface AuthApi {
   login(email: string, password: string): Promise<AuthSession>;
   me(accessToken: string): Promise<User>;
   logout(accessToken: string): Promise<void>;
+  /** Updates name, email and photo. avatarUrl: undefined keeps it, null removes it. */
+  updateProfile(accessToken: string, input: ProfileUpdate): Promise<User>;
 }
 
 export const PASSWORD_MIN_LENGTH = 8;

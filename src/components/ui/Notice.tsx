@@ -4,26 +4,29 @@ import { Ionicons } from '@expo/vector-icons';
 import { palette, radius, spacing, useDirection } from '../../theme';
 import { AppText } from './AppText';
 import { IconName } from './icons';
+import { FadeIn } from './motion';
 
 export type NoticeTone = 'info' | 'success' | 'warning' | 'error';
 
-const tones: Record<NoticeTone, { bg: string; fg: string; icon: IconName }> = {
+const tones = (): Record<NoticeTone, { bg: string; fg: string; icon: IconName }> => ({
   info: { bg: palette.tealTint, fg: palette.tealInk, icon: 'information-circle-outline' },
   success: { bg: palette.successSoft, fg: palette.success, icon: 'checkmark-circle-outline' },
   warning: { bg: palette.warningSoft, fg: palette.warning, icon: 'alert-circle-outline' },
   error: { bg: palette.errorSoft, fg: palette.error, icon: 'close-circle-outline' },
-};
+});
 
 export function Notice({ message, tone = 'info' }: { message: string; tone?: NoticeTone }) {
-  const t = tones[tone];
+  const t = tones()[tone];
   const { row } = useDirection();
   return (
-    <View style={[styles.box, row, { backgroundColor: t.bg }]} accessibilityRole="alert">
-      <Ionicons name={t.icon} size={15} color={t.fg} style={styles.icon} />
-      <AppText variant="caption" color={t.fg} style={styles.text}>
-        {message}
-      </AppText>
-    </View>
+    <FadeIn offset={-6}>
+      <View style={[styles.box, row, { backgroundColor: t.bg }]} accessibilityRole="alert">
+        <Ionicons name={t.icon} size={15} color={t.fg} style={styles.icon} />
+        <AppText variant="caption" color={t.fg} style={styles.text}>
+          {message}
+        </AppText>
+      </View>
+    </FadeIn>
   );
 }
 

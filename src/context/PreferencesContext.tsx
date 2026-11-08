@@ -17,11 +17,14 @@ interface PreferencesValue {
   createProfile: (name: string) => Promise<PreferenceProfile>;
   deleteProfile: (id: string) => Promise<void>;
   applyProfile: (profile: PreferenceProfile) => Promise<boolean>;
+  /** Fetches settings and profiles from the server again (pull-to-refresh). */
+  reload: () => Promise<void>;
 }
 
 const PreferencesContext = createContext<PreferencesValue | undefined>(undefined);
 const cacheKey = (uid: string) => `signsync.prefs.cache.${uid}`;
 const fallback = defaultSettingsFor('normal');
+const textScale: Record<PreferenceSettings['fontSize'], number> = { small: 0.9, normal: 1, large: 1.15 };
 
 const pick = (p: PreferenceSettings): PreferenceSettings => ({
   outputLanguage: p.outputLanguage,
@@ -107,16 +110,25 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     [accessToken]
   );
 
+  const reload = useCallback(async () => {
+    if (!user || !accessToken) return;
+    const [server, list] = await Promise.all([api.preferences.get(accessToken), api.preferences.listProfiles(accessToken)]);
+    setPrefs(pick(server));
+    setProfiles(list);
+    setSyncState('synced');
+    AsyncStorage.setItem(cacheKey(user.id), JSON.stringify(pick(server))).catch(() => undefined);
+  }, [user, accessToken]);
+
   const applyProfile = useCallback((profile: PreferenceProfile) => save(pick(profile.settings)), [save]);
 
   const value = useMemo(
-    () => ({ prefs, syncState, profiles, save, createProfile, deleteProfile, applyProfile }),
-    [prefs, syncState, profiles, save, createProfile, deleteProfile, applyProfile]
+    () => ({ prefs, syncState, profiles, save, createProfile, deleteProfile, applyProfile, reload }),
+    [prefs, syncState, profiles, save, createProfile, deleteProfile, applyProfile, reload]
   );
 
   return (
     <PreferencesContext.Provider value={value}>
-      <TextScaleContext.Provider value={prefs.fontSize === 'large' ? 1.15 : 1}>{children}</TextScaleContext.Provider>
+      <TextScaleContext.Provider value={textScale[prefs.fontSize] ?? 1}>{children}</TextScaleContext.Provider>
     </PreferencesContext.Provider>
   );
 }

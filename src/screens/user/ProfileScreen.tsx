@@ -2,24 +2,15 @@ import React, { useState } from 'react';
 import { Pressable, StyleSheet, View, ViewStyle } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { fonts, palette, spacing, useDirection } from '../../theme';
-import { AppText, Button, Card, ConfirmDialog, IconBadge, IconName, Screen, StatusPill } from '../../components/ui';
+import { palette, spacing, useDirection, themedStyles } from '../../theme';
+import { AppText, Avatar, Button, Card, ConfirmDialog, IconBadge, IconName, Screen, StatusPill } from '../../components/ui';
 import { LanguageToggle } from '../../components/LanguageToggle';
 import { useAuth } from '../../context/AuthContext';
 import { StringKey, useI18n } from '../../i18n';
 
-function initials(name: string) {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase())
-    .join('');
-}
-
 export default function ProfileScreen() {
   const navigation = useNavigation<any>();
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const { t, lang } = useI18n();
   const { row: dirRow, forward } = useDirection();
   const [confirming, setConfirming] = useState(false);
@@ -29,19 +20,27 @@ export default function ProfileScreen() {
   const since = new Date(user.createdAt).toLocaleDateString(lang === 'ur' ? 'ur-PK' : 'en-PK', { month: 'long', year: 'numeric' });
 
   const rows: { icon: IconName; label: StringKey; onPress: () => void }[] = [
+    { icon: 'create-outline', label: 'editProfile.title', onPress: () => navigation.navigate('EditProfile') },
     { icon: 'options-outline', label: 'profile.preferences', onPress: () => navigation.navigate('Preferences') },
     ...(isAdmin ? [] : [{ icon: 'time-outline' as IconName, label: 'profile.history' as StringKey, onPress: () => navigation.navigate('CommunicationHistory') }]),
   ];
 
   return (
-    <Screen>
+    <Screen onRefresh={refreshUser}>
       <AppText variant="title" accessibilityRole="header">
         {t('profile.title')}
       </AppText>
 
-      <Card style={[styles.identity, dirRow as ViewStyle]}>
-        <View style={styles.avatar} accessibilityElementsHidden importantForAccessibility="no">
-          <AppText style={styles.avatarText}>{initials(user.name)}</AppText>
+      <Card
+        style={{ ...styles.identity, ...(dirRow as ViewStyle) }}
+        onPress={() => navigation.navigate('EditProfile')}
+        accessibilityLabel={t('editProfile.title')}
+      >
+        <View>
+          <Avatar name={user.name} uri={user.avatarUrl} size={64} />
+          <View style={styles.cameraBadge}>
+            <Ionicons name="pencil" size={12} color={palette.onTeal} />
+          </View>
         </View>
         <View style={styles.flex}>
           <AppText variant="heading" numberOfLines={1}>
@@ -100,12 +99,23 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   identity: { alignItems: 'center', gap: spacing.lg, padding: spacing.lg },
-  avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: palette.navy, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontFamily: fonts.bold, fontSize: 20, lineHeight: 24, color: palette.white },
+  cameraBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: palette.teal,
+    borderWidth: 2,
+    borderColor: palette.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   pillRow: { marginTop: spacing.xs },
   row: { alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.md, paddingVertical: spacing.md, minHeight: 56 },
   divider: { borderTopWidth: 1, borderTopColor: palette.line2 },
   flex: { flex: 1, minWidth: 0 },
-});
+}));

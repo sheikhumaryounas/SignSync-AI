@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { fonts, palette, radius, shadow, spacing } from '../../theme';
-import { AppText, Card, Chip, EmptyState, Input, Notice, SegmentedControl, StatusPill } from '../../components/ui';
+import { fonts, palette, radius, shadow, spacing, themedStyles } from '../../theme';
+import { AppText, Card, Chip, EmptyState, FadeIn, Input, Notice, SegmentedControl, Stagger, StatusPill, usePullRefresh } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { apiErrorText, StringKey, useI18n } from '../../i18n';
 import { api, VocabEntry, VocabStatus } from '../../services/api';
@@ -20,13 +20,21 @@ export default function VocabularyScreen() {
   const [search, setSearch] = useState('');
   const [sheet, setSheet] = useState<{ open: boolean; entry: VocabEntry | null }>({ open: false, entry: null });
 
-  useEffect(() => {
+  const loadList = useCallback(async () => {
     if (!accessToken) return;
-    api.vocabulary
-      .list(accessToken)
-      .then(setList)
-      .catch((e) => setError(apiErrorText(e, t)));
+    try {
+      setList(await api.vocabulary.list(accessToken));
+      setError(undefined);
+    } catch (e) {
+      setError(apiErrorText(e, t));
+    }
   }, [accessToken, t]);
+
+  useEffect(() => {
+    loadList();
+  }, [loadList]);
+
+  const refreshControl = usePullRefresh(loadList);
 
   const counts = useMemo(() => {
     const c = { active: 0, training: 0, retired: 0 };
@@ -46,6 +54,7 @@ export default function VocabularyScreen() {
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <View style={styles.head}>
+        <Stagger>
         <View style={styles.titleRow}>
           <View>
             <AppText variant="caption">{t('admin.label')}</AppText>
@@ -67,14 +76,17 @@ export default function VocabularyScreen() {
         />
         <Input icon="search-outline" raised placeholder={t('vocab.search')} value={search} onChangeText={setSearch} accessibilityLabel={t('vocab.search')} />
         {error ? <Notice tone="error" message={error} /> : null}
+        </Stagger>
       </View>
 
       <FlatList
         data={rows}
         keyExtractor={(v) => v.id}
         contentContainerStyle={styles.list}
+        refreshControl={refreshControl}
         ListEmptyComponent={list ? <EmptyState icon="book-outline" title={t('vocab.empty')} message={t('history.noResultsMsg')} /> : undefined}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
+          <FadeIn index={index + 3}>
           <Card onPress={() => setSheet({ open: true, entry: item })} style={styles.row} accessibilityLabel={`${item.nameEn}, ${t(`status.${item.status}` as StringKey)}`}>
             <View style={styles.flex}>
               <View style={styles.names}>
@@ -89,6 +101,7 @@ export default function VocabularyScreen() {
             </View>
             <StatusPill label={t(`status.${item.status}` as StringKey)} tone={statusTone[item.status]} />
           </Card>
+          </FadeIn>
         )}
       />
 
@@ -98,7 +111,7 @@ export default function VocabularyScreen() {
         accessibilityRole="button"
         accessibilityLabel={t('vocab.add')}
       >
-        <Ionicons name="add" size={18} color={palette.navy} />
+        <Ionicons name="add" size={18} color={palette.onTeal} />
         <AppText style={styles.fabText}>{t('vocab.add')}</AppText>
       </Pressable>
 
@@ -117,7 +130,7 @@ export default function VocabularyScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   root: { flex: 1, backgroundColor: palette.canvas },
   head: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.sm, gap: spacing.md },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -138,6 +151,6 @@ const styles = StyleSheet.create({
     height: 48,
     boxShadow: shadow.fab,
   },
-  fabText: { fontFamily: fonts.semibold, fontSize: 14, lineHeight: 18, color: palette.navy },
+  fabText: { fontFamily: fonts.semibold, fontSize: 14, lineHeight: 18, color: palette.onTeal },
   flex: { flex: 1, minWidth: 0 },
-});
+}));

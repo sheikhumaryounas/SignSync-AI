@@ -1,9 +1,12 @@
 import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View, ViewStyle } from 'react-native';
+import { ActivityIndicator, Animated, Pressable, StyleSheet, View, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { palette, radius, spacing, useDirection } from '../../theme';
 import { AppText } from './AppText';
 import { IconName } from './icons';
+import { usePressScale } from './motion';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 // danger = soft red for a first destructive tap; destructive = solid red for the final confirm.
 export type ButtonVariant = 'primary' | 'teal' | 'ghost' | 'danger' | 'destructive';
@@ -21,13 +24,13 @@ interface ButtonProps {
   accessibilityHint?: string;
 }
 
-const tones: Record<ButtonVariant, { bg: string; fg: string; border?: string }> = {
+const tones = (): Record<ButtonVariant, { bg: string; fg: string; border?: string }> => ({
   primary: { bg: palette.navy, fg: palette.white },
-  teal: { bg: palette.teal, fg: palette.navy },
-  ghost: { bg: palette.surface, fg: palette.navy, border: palette.line },
+  teal: { bg: palette.teal, fg: palette.onTeal },
+  ghost: { bg: palette.surface, fg: palette.navyText, border: palette.line },
   danger: { bg: palette.errorSoft, fg: palette.error },
   destructive: { bg: palette.error, fg: palette.white },
-};
+});
 
 export function Button({
   title,
@@ -43,23 +46,26 @@ export function Button({
 }: ButtonProps) {
   const { row, arrowForward } = useDirection();
   const inactive = disabled || loading;
-  const tone = inactive ? { bg: palette.line2, fg: palette.muted } : tones[variant];
+  const tone = inactive ? { bg: palette.line2, fg: palette.muted } : tones()[variant];
+  const { scale, onPressIn, onPressOut } = usePressScale();
 
   return (
-    <Pressable
+    <AnimatedPressable
       onPress={onPress}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
       disabled={inactive}
       accessibilityRole="button"
       accessibilityLabel={title}
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: inactive, busy: loading }}
-      style={({ pressed }) => [
+      style={[
         styles.base,
         { backgroundColor: tone.bg },
         'border' in tone && tone.border ? { borderWidth: 1.5, borderColor: tone.border } : null,
         fullWidth ? styles.full : null,
-        pressed && !inactive ? styles.pressed : null,
         style,
+        { transform: [{ scale }] },
       ]}
     >
       {loading ? (
@@ -73,7 +79,7 @@ export function Button({
           {iconRight ? <Ionicons name={iconRight === 'arrow-forward' ? arrowForward : iconRight} size={16} color={tone.fg} /> : null}
         </View>
       )}
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
@@ -87,5 +93,4 @@ const styles = StyleSheet.create({
   },
   full: { alignSelf: 'stretch' },
   row: { alignItems: 'center', gap: spacing.sm },
-  pressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
 });

@@ -3,7 +3,7 @@ import { KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, View } 
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { fonts, palette, radius, spacing } from '../../theme';
+import { fonts, palette, radius, spacing, themedStyles } from '../../theme';
 import { AppText, Button, Chip, IconBadge, Input, Notice, SegmentedControl, StatusPill } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { useFeedback } from '../../context/FeedbackContext';
@@ -232,7 +232,7 @@ export function SignSheet({ visible, entry, all, onClose, onChanged, onOpenExist
                 {clips.length ? (
                   <Pressable onPress={() => setConsent((v) => !v)} style={styles.consent} accessibilityRole="checkbox" accessibilityState={{ checked: consent }}>
                     <View style={[styles.box, consent ? styles.boxOn : null]}>
-                      {consent ? <Ionicons name="checkmark" size={12} color={palette.navy} /> : null}
+                      {consent ? <Ionicons name="checkmark" size={12} color={palette.onTeal} /> : null}
                     </View>
                     <AppText variant="caption" style={styles.flex}>
                       {t('sign.consent')}
@@ -277,7 +277,7 @@ export function SignSheet({ visible, entry, all, onClose, onChanged, onOpenExist
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   scrim: { flex: 1, backgroundColor: palette.scrim, justifyContent: 'flex-end' },
   sheetWrap: { maxHeight: '92%' },
   sheet: { backgroundColor: palette.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, paddingTop: spacing.sm },
@@ -307,4 +307,4 @@ const styles = StyleSheet.create({
   confirm: { gap: spacing.sm, padding: spacing.md, borderRadius: radius.lg, backgroundColor: palette.errorSoft },
   row: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs },
   flex: { flex: 1, minWidth: 0 },
-});
+}));

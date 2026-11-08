@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { fonts, palette, radius, spacing } from '../../theme';
+import { fonts, palette, radius, spacing, themedStyles } from '../../theme';
 import { AppText, Card, IconButton, Notice, Screen } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { apiErrorText, StringKey, useI18n } from '../../i18n';
@@ -111,7 +111,7 @@ export default function CompareVersionsScreen({ navigation, route }: Props) {
           vs
         </AppText>
         <Pressable onPress={() => setBId(cycle(bId, aId))} style={[styles.pill, styles.pillB]} accessibilityRole="button" accessibilityHint={t('compare.tapToSwitch')}>
-          <AppText style={[styles.pillText, { color: palette.navy }]}>{vB?.version ?? '—'}</AppText>
+          <AppText style={[styles.pillText, { color: palette.navyText }]}>{vB?.version ?? '—'}</AppText>
         </Pressable>
       </View>
       <AppText variant="caption" align="center">
@@ -174,7 +174,7 @@ export default function CompareVersionsScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   vs: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   pill: { flex: 1, height: 40, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
   rowLine: { borderTopWidth: 1, borderTopColor: palette.line2 },
   c1: { flex: 1.3 },
   cn: { flex: 1, textAlign: 'right' },
-  strong: { fontFamily: fonts.semibold, fontSize: 12.5, lineHeight: 18, color: palette.navy },
+  strong: { fontFamily: fonts.semibold, fontSize: 12.5, lineHeight: 18, color: palette.navyText },
   diff: { fontFamily: fonts.semibold, fontSize: 12, lineHeight: 18 },
   bars: { gap: spacing.md },
   barRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
@@ -198,4 +198,4 @@ const styles = StyleSheet.create({
   key: { flexDirection: 'row', gap: spacing.lg, paddingLeft: 84 },
   keyItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   swatch: { width: 10, height: 6, borderRadius: 2 },
-});
+}));

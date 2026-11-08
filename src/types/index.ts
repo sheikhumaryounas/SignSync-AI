@@ -26,7 +26,7 @@ export interface UserPreference {
   hapticFeedback: boolean;
   confidenceThreshold: number; // 0.5 to 0.95 (e.g. 0.75)
   highContrast: boolean;
-  fontSize: 'normal' | 'large';
+  fontSize: 'small' | 'normal' | 'large';
   avatarStyle: 'modern_3d' | 'minimal' | 'neon';
   avatarSpeed: number; // 0.5, 1.0, 1.5
   activeProfileName?: string;
@@ -99,4 +99,5 @@ export type RootStackParamList = {
   VoiceSign: undefined;
   TextToSign: undefined;
   BidirectionalChat: undefined;
+  EditProfile: undefined;
 };

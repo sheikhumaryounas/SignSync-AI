@@ -1,5 +1,6 @@
-export { palette, colors, lightColors } from './colors';
-export type { Palette, ThemePalette } from './colors';
+export { palette, colors, lightColors, darkColors, applyThemeMode, getThemeMode } from './colors';
+export type { Palette, ThemePalette, ThemeMode } from './colors';
+export { themedStyles } from './themedStyles';
 export { spacing, radius, shadow, touchTarget } from './spacing';
 export { fonts, type } from './typography';
 export type { TextVariant } from './typography';

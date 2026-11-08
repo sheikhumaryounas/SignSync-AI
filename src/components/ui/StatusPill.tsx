@@ -5,17 +5,17 @@ import { AppText } from './AppText';
 
 export type StatusTone = 'success' | 'warning' | 'muted' | 'info' | 'live' | 'error';
 
-const tones: Record<StatusTone, { bg: string; fg: string }> = {
+const tones = (): Record<StatusTone, { bg: string; fg: string }> => ({
   success: { bg: palette.successSoft, fg: palette.success },
   warning: { bg: palette.warningSoft, fg: palette.warning },
   muted: { bg: palette.line2, fg: palette.muted },
-  info: { bg: palette.navySoft, fg: palette.navy2 },
+  info: { bg: palette.navySoft, fg: palette.navyText },
   live: { bg: 'rgba(0,179,196,0.2)', fg: palette.tealOnNavy },
   error: { bg: palette.errorSoft, fg: palette.error },
-};
+});
 
 export function StatusPill({ label, tone = 'success' }: { label: string; tone?: StatusTone }) {
-  const t = tones[tone];
+  const t = tones()[tone];
   const { row, start } = useDirection();
   return (
     <View style={[styles.pill, row, { backgroundColor: t.bg, alignSelf: start }]}>

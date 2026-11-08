@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet } from 'react-native';
-import { fonts, palette, radius, spacing } from '../../theme';
+import { fonts, palette, radius, spacing, themedStyles } from '../../theme';
 import { AppText } from './AppText';
 
 export type ChipTone = 'default' | 'teal' | 'dashed' | 'glass' | 'tealSolid';
@@ -23,7 +23,7 @@ export function Chip({ label, selected = false, tone = 'default', onPress, onLon
       : tone === 'glass'
         ? palette.white
         : tone === 'tealSolid'
-          ? palette.navy
+          ? palette.onTeal
           : palette.ink2;
 
   return (
@@ -44,7 +44,7 @@ export function Chip({ label, selected = false, tone = 'default', onPress, onLon
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   base: {
     minHeight: 36, // 44 px touch target with hitSlop
     paddingHorizontal: spacing.md,
@@ -59,4 +59,4 @@ const styles = StyleSheet.create({
   glass: { backgroundColor: palette.glass },
   tealSolid: { backgroundColor: palette.teal },
   selected: { backgroundColor: palette.navy },
-});
+}));

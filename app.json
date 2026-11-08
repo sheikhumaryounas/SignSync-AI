@@ -33,7 +33,14 @@
           "backgroundColor": "#FFFFFF"
         }
       ],
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "SignSync AI uses your photos so you can set a profile picture.",
+          "cameraPermission": false
+        }
+      ]
     ]
   }
 }

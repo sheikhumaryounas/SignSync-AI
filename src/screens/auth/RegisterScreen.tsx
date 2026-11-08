@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { OutputLanguage, RootStackParamList } from '../../types';
-import { fonts, palette, radius, shadow, spacing, useDirection } from '../../theme';
+import { fonts, palette, radius, shadow, spacing, useDirection, themedStyles } from '../../theme';
 import { AppText, Button, IconBadge, IconName, Input, Screen, SegmentedControl } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { apiErrorText, StringKey, useI18n } from '../../i18n';
@@ -255,7 +255,7 @@ function Progress({ step }: { step: 1 | 2 }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   content: { flexGrow: 1, gap: spacing.lg, paddingHorizontal: spacing.xl },
   title: { gap: spacing.xs },
   gapSm: { gap: spacing.sm },
@@ -281,4 +281,4 @@ const styles = StyleSheet.create({
   roleText: { flex: 1, gap: 1 },
   radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: palette.outline, backgroundColor: palette.surface },
   radioOn: { borderWidth: 6, borderColor: palette.teal },
-});
+}));

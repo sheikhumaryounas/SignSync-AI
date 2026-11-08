@@ -1,9 +1,10 @@
-import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { fonts, palette, shadow, spacing, useDirection } from '../theme';
+import { fonts, palette, shadow, spacing, useDirection, themedStyles } from '../theme';
 import { AppText, IconName } from '../components/ui';
+import { useReduceMotion } from '../components/ui/motion';
 import { StringKey, useI18n } from '../i18n';
 
 export interface TabMeta {
@@ -35,10 +36,10 @@ export function makeTabBar(meta: Record<string, TabMeta>) {
               accessibilityLabel={t(m.label)}
               style={styles.item}
             >
-              <View style={[styles.pill, focused ? styles.pillOn : null]}>
+              <TabPill focused={focused}>
                 <Ionicons name={focused ? m.iconActive : m.icon} size={20} color={focused ? palette.tealInk : palette.muted} />
-              </View>
-              <AppText align="center" style={[styles.label, { color: focused ? palette.navy : palette.muted, fontFamily: focused ? fonts.semibold : fonts.medium }]}>
+              </TabPill>
+              <AppText align="center" style={[styles.label, { color: focused ? palette.navyText : palette.muted, fontFamily: focused ? fonts.semibold : fonts.medium }]}>
                 {t(m.label)}
               </AppText>
             </Pressable>
@@ -49,7 +50,31 @@ export function makeTabBar(meta: Record<string, TabMeta>) {
   };
 }
 
-const styles = StyleSheet.create({
+// The teal pill grows out from the icon and the icon gives a small bounce when its tab is selected.
+function TabPill({ focused, children }: { focused: boolean; children: React.ReactNode }) {
+  const reduce = useReduceMotion();
+  const on = useRef(new Animated.Value(focused ? 1 : 0)).current;
+
+  useEffect(() => {
+    const to = focused ? 1 : 0;
+    if (reduce) {
+      on.setValue(to);
+      return;
+    }
+    Animated.timing(on, { toValue: to, duration: 260, easing: Easing.out(Easing.back(2)), useNativeDriver: true }).start();
+  }, [focused, reduce, on]);
+
+  const pillScale = on.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] });
+  const iconScale = on.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.15, 1] });
+  return (
+    <View style={styles.pill}>
+      <Animated.View style={[StyleSheet.absoluteFill, styles.pillOn, { opacity: on, transform: [{ scaleX: pillScale }] }]} />
+      <Animated.View style={{ transform: [{ scale: iconScale }] }}>{children}</Animated.View>
+    </View>
+  );
+}
+
+const styles = themedStyles(() => ({
   bar: {
     backgroundColor: palette.surface,
     paddingTop: spacing.sm,
@@ -60,4 +85,4 @@ const styles = StyleSheet.create({
   pill: { width: 40, height: 26, borderRadius: 13, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   pillOn: { backgroundColor: palette.tealSoft },
   label: { fontSize: 12, lineHeight: 16 },
-});
+}));

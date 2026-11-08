@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Platform, Pressable, StyleSheet, TextInput, TextInputProps, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { fonts, palette, radius, spacing, useDirection } from '../../theme';
+import { fonts, palette, radius, spacing, useDirection, themedStyles } from '../../theme';
 import { useI18n } from '../../i18n';
 import { AppText } from './AppText';
 import { IconName } from './icons';
@@ -85,7 +85,7 @@ export function Input({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   field: { gap: 6 },
   box: {
     minHeight: 48,
@@ -115,4 +115,4 @@ const styles = StyleSheet.create({
   hintRow: { gap: 6, alignItems: 'flex-start' },
   hintIcon: { marginTop: 2 },
   hintText: { flex: 1 },
-});
+}));

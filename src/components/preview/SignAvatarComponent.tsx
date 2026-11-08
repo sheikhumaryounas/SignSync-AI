@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AccessibilityInfo, StyleSheet, View } from 'react-native';
 import Svg, { Circle, G, Line, Path, Rect } from 'react-native-svg';
-import { palette, radius, spacing, useDirection } from '../../theme';
+import { palette, radius, spacing, useDirection, themedStyles } from '../../theme';
 import { SignVocabularyItem } from '../../types';
 import { AppText, Button, Card, Chip, IconButton, SegmentedControl, StatusPill } from '../ui';
 import { usePreview } from '../../context/PreviewContext';
@@ -239,7 +239,7 @@ export const SignAvatarComponent: React.FC<{ signs: SignVocabularyItem[] }> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   card: { gap: spacing.md },
   head: { alignItems: 'center', justifyContent: 'space-between', minHeight: 24 },
   stage: { backgroundColor: palette.tealTint, borderRadius: radius.md, overflow: 'hidden' },
@@ -249,4 +249,4 @@ const styles = StyleSheet.create({
   controls: { flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
   control: { minHeight: 44, paddingHorizontal: spacing.md },
   speed: { minWidth: 138, flexGrow: 1 },
-});
+}));

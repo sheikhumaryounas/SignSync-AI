@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { fonts, palette, radius, spacing, useDirection } from '../../theme';
+import { fonts, palette, radius, spacing, useDirection, themedStyles } from '../../theme';
 import { AppText, IconButton } from '../ui';
 import { useI18n } from '../../i18n';
 import { generateSimulatedLandmarks, MediaPipeFrame } from '../../services/preview/aiEngine';
@@ -59,7 +59,7 @@ export function CameraPreview({ scanning, showPoints, onTogglePoints, result }: 
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   frame: { height: 220, borderRadius: radius.lg, overflow: 'hidden', backgroundColor: palette.navy },
   point: { position: 'absolute', width: 7, height: 7, borderRadius: 4 },
   pointRight: { backgroundColor: palette.teal },
@@ -76,5 +76,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: 6,
   },
-  resultText: { fontFamily: fonts.semibold, fontSize: 14, lineHeight: 20, color: palette.navy },
-});
+  resultText: { fontFamily: fonts.semibold, fontSize: 14, lineHeight: 20, color: palette.onTeal },
+}));

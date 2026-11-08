@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fonts, palette, radius, spacing } from '../../theme';
-import { AppText, BrandBand, Card, Chip, ConfirmDialog, Notice, SectionLabel, StatusPill } from '../../components/ui';
+import { fonts, palette, radius, spacing, themedStyles } from '../../theme';
+import { AppText, BrandBand, Card, Chip, ConfirmDialog, Notice, SectionLabel, Stagger, StatusPill, usePullRefresh } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { useFeedback } from '../../context/FeedbackContext';
 import { apiErrorText, StringKey, useI18n } from '../../i18n';
@@ -73,6 +73,11 @@ export default function MetricsScreen() {
     }
   }, [accessToken, versionId, days, prevVersion, t]);
 
+  // Pull down: re-read the figures and the flagged predictions.
+  const refreshControl = usePullRefresh(() =>
+    Promise.allSettled([refresh(), accessToken ? api.metrics.flagged(accessToken).then(setFlags) : Promise.resolve()])
+  );
+
   useEffect(() => {
     refresh();
   }, [refresh]);
@@ -127,7 +132,8 @@ export default function MetricsScreen() {
         </View>
       </BrandBand>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={refreshControl}>
+        <Stagger delay={120}>
         {error ? <Notice tone="error" message={error} /> : null}
         {summary?.stale ? <Notice tone="warning" message={t('metrics.stale')} /> : null}
         {summary?.example ? <Notice message={t('metrics.example')} /> : null}
@@ -218,6 +224,7 @@ export default function MetricsScreen() {
             {t('metrics.open', { n: openFlags.length })}
           </AppText>
         ) : null}
+        </Stagger>
       </ScrollView>
 
       <ConfirmDialog
@@ -233,7 +240,7 @@ export default function MetricsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   root: { flex: 1, backgroundColor: palette.canvas },
   versionRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 2 },
   big: { fontFamily: fonts.bold, fontSize: 34, lineHeight: 40, letterSpacing: -0.6, color: palette.onNavy },
@@ -242,9 +249,9 @@ const styles = StyleSheet.create({
   gap: { gap: spacing.sm },
   kpis: { flexDirection: 'row', gap: spacing.sm },
   kpi: { flex: 1, gap: 2, padding: spacing.md - 2 },
-  kpiValue: { fontFamily: fonts.bold, fontSize: 18, lineHeight: 24, color: palette.navy },
+  kpiValue: { fontFamily: fonts.bold, fontSize: 18, lineHeight: 24, color: palette.navyText },
   between: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  latValue: { fontFamily: fonts.bold, fontSize: 14, lineHeight: 20, color: palette.navy },
+  latValue: { fontFamily: fonts.bold, fontSize: 14, lineHeight: 20, color: palette.navyText },
   stack: { flexDirection: 'row', height: 10, borderRadius: radius.sm, overflow: 'hidden', backgroundColor: palette.line2 },
   legend: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 4 },
   legendItem: { width: '50%', flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -253,4 +260,4 @@ const styles = StyleSheet.create({
   conf: { backgroundColor: palette.errorSoft, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
   confText: { fontFamily: fonts.semibold, fontSize: 11, lineHeight: 14, color: palette.error },
   flex: { flex: 1, minWidth: 0 },
-});
+}));

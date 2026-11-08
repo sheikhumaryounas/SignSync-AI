@@ -5,6 +5,7 @@ import { AppText } from './AppText';
 import { Button } from './Button';
 import { IconBadge } from './IconBadge';
 import { IconName } from './icons';
+import { FadeIn } from './motion';
 
 interface EmptyStateProps {
   icon: IconName;
@@ -16,7 +17,7 @@ interface EmptyStateProps {
 
 export function EmptyState({ icon, title, message, actionLabel, onAction }: EmptyStateProps) {
   return (
-    <View style={styles.wrap}>
+    <FadeIn style={styles.wrap} offset={16}>
       <IconBadge icon={icon} />
       <AppText variant="heading" align="center">
         {title}
@@ -25,7 +26,7 @@ export function EmptyState({ icon, title, message, actionLabel, onAction }: Empt
         {message}
       </AppText>
       {actionLabel ? <Button title={actionLabel} onPress={onAction} fullWidth={false} /> : null}
-    </View>
+    </FadeIn>
   );
 }
 

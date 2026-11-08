@@ -2,9 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { palette, radius, shadow, spacing, useDirection } from '../../theme';
+import { palette, radius, shadow, spacing, useDirection, themedStyles } from '../../theme';
 import { RootStackParamList, SignVocabularyItem } from '../../types';
-import { AppText, Button, Chip, IconBadge, IconButton, Input, SegmentedControl } from '../../components/ui';
+import { AppText, Button, Chip, FadeIn, IconBadge, IconButton, Input, SegmentedControl } from '../../components/ui';
 import { usePreview } from '../../context/PreviewContext';
 import { useFeedback } from '../../context/FeedbackContext';
 import { useI18n } from '../../i18n';
@@ -143,7 +143,9 @@ export default function BidirectionalChatScreen({ navigation }: Props) {
           }}
         >
           {view === 'guide' ? (
-            <SignAvatarComponent signs={guideSigns} />
+            <FadeIn>
+              <SignAvatarComponent signs={guideSigns} />
+            </FadeIn>
           ) : (
             turns.map((turn) => {
               const signer = turn.side === 'signer';
@@ -153,8 +155,9 @@ export default function BidirectionalChatScreen({ navigation }: Props) {
               const en = single ? (isUrduText(turn.textUrdu) ? undefined : turn.textEnglish) : lines.en;
               const mapped = mapTextToSignSequence(turn.textEnglish).supportedSigns;
               return (
+                // Each new message slides up into the thread.
+                <FadeIn key={turn.id} offset={14}>
                 <View
-                  key={turn.id}
                   style={[
                     styles.bubble,
                     signer ? styles.signerBubble : styles.speakerBubble,
@@ -187,6 +190,7 @@ export default function BidirectionalChatScreen({ navigation }: Props) {
                     ) : null}
                   </View>
                 </View>
+                </FadeIn>
               );
             })
           )}
@@ -242,7 +246,7 @@ export default function BidirectionalChatScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   root: { flex: 1, backgroundColor: palette.canvas },
   flex: { flex: 1 },
   save: { minHeight: 44, paddingHorizontal: spacing.md },
@@ -264,4 +268,4 @@ const styles = StyleSheet.create({
   },
   signs: { flexWrap: 'wrap', gap: spacing.sm },
   inputRow: { alignItems: 'center', gap: spacing.sm },
-});
+}));

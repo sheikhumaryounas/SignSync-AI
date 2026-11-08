@@ -6,6 +6,13 @@ export interface AuthSession {
   user: User;
 }
 
+export interface ProfileUpdate {
+  name: string;
+  email: string;
+  /** A data: URI for a new photo, null to remove it, undefined to leave it as is. */
+  avatarUrl?: string | null;
+}
+
 export type SelfRegisterRole = Exclude<UserRole, 'admin'>;
 
 export interface RegisterInput {
@@ -18,12 +25,14 @@ export interface RegisterInput {
 
 // ---------- Preferences (EUC3, table user_preferences) ----------
 
+export type FontSize = 'small' | 'normal' | 'large';
+
 export interface Preferences {
   outputLanguage: OutputLanguage;
   visualFeedback: boolean;
   audioFeedback: boolean;
   hapticFeedback: boolean;
-  fontSize: 'normal' | 'large';
+  fontSize: FontSize;
   updatedAt: string;
 }
 

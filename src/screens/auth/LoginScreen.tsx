@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, UserRole } from '../../types';
-import { fonts, palette, spacing, useDirection } from '../../theme';
+import { fonts, palette, spacing, useDirection, themedStyles } from '../../theme';
 import { AppText, Button, Chip, Input, Notice, Screen } from '../../components/ui';
 import { LanguageToggle } from '../../components/LanguageToggle';
 import { useAuth } from '../../context/AuthContext';
@@ -137,7 +137,7 @@ export default function LoginScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   content: { flexGrow: 1, gap: spacing.lg, paddingHorizontal: spacing.xl },
   title: { gap: spacing.xs, marginTop: spacing.sm },
   forgot: { marginTop: -spacing.sm },
@@ -145,4 +145,4 @@ const styles = StyleSheet.create({
   footer: { justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' },
   demo: { marginTop: 'auto', gap: spacing.sm, paddingTop: spacing.lg, borderTopWidth: 1, borderTopColor: palette.line2 },
   demoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, justifyContent: 'center' },
-});
+}));

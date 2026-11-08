@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { palette, radius, shadow } from '../../theme';
+import { palette, radius, shadow, themedStyles } from '../../theme';
 import { IconName } from './icons';
 
 interface IconButtonProps {
@@ -13,7 +13,7 @@ interface IconButtonProps {
 
 // 36 px visual, 44 px touch target via hitSlop.
 export function IconButton({ icon, onPress, accessibilityLabel, tone = 'default' }: IconButtonProps) {
-  const color = tone === 'glass' ? palette.white : tone === 'danger' ? palette.error : palette.navy;
+  const color = tone === 'glass' ? palette.white : tone === 'danger' ? palette.error : palette.navyText;
   return (
     <Pressable
       onPress={onPress}
@@ -27,10 +27,10 @@ export function IconButton({ icon, onPress, accessibilityLabel, tone = 'default'
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   base: { width: 40, height: 40, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
   default: { backgroundColor: palette.surface, boxShadow: shadow.card },
   outline: { backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.line },
   glass: { backgroundColor: palette.glass },
   danger: { backgroundColor: palette.surface, boxShadow: shadow.card },
-});
+}));

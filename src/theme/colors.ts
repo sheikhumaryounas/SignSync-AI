@@ -1,9 +1,15 @@
-// Brand palette sampled from the SignSync AI logo. Light theme only for FYP-1.
-export const palette = {
-  navy: '#002358', // logo navy: headings, primary buttons, app bars
+import { shadow } from './spacing';
+
+export type ThemeMode = 'light' | 'dark';
+
+// Brand palette sampled from the SignSync AI logo.
+const lightPalette = {
+  navy: '#002358', // logo navy: primary buttons, app bars, filled brand surfaces
   navy2: '#0B3A7E', // gradient end on brand bands
   navySoft: '#EAF0F8',
-  teal: '#00B3C4', // logo teal: active, focus, toggles. Use navy text on it.
+  navyText: '#002358', // navy used as text/icon colour on surfaces (headings)
+  onTeal: '#002358', // text/icons placed on a solid teal fill
+  teal: '#00B3C4', // logo teal: active, focus, toggles. Use onTeal text on it.
   tealInk: '#007C88', // teal text on white (4.9:1)
   tealSoft: '#E2F6F8',
   tealTint: '#F2FBFC',
@@ -35,9 +41,53 @@ export const palette = {
   glass: 'rgba(255,255,255,0.12)',
   scrim: 'rgba(0,20,52,0.45)',
   white: '#FFFFFF',
-} as const;
+};
 
-export type Palette = typeof palette;
+export type Palette = { [K in keyof typeof lightPalette]: string };
+
+const darkPalette: Palette = {
+  navy: '#1E4F96',
+  navy2: '#2B64B3',
+  navySoft: '#1A2A44',
+  navyText: '#E3ECF8',
+  onTeal: '#002358',
+  teal: '#00B3C4',
+  tealInk: '#4FD3E0',
+  tealSoft: '#0F3A44',
+  tealTint: '#0F2A33',
+
+  ink: '#E6EDF7',
+  ink2: '#AEBBD0',
+  muted: '#8D9DB6',
+  line: '#273650',
+  line2: '#1E2B40',
+  toggleOff: '#3B4B66',
+  outline: '#4A5B78',
+
+  canvas: '#0A1322',
+  surface: '#131E32',
+
+  success: '#3CC48F',
+  successSoft: '#103327',
+  warning: '#F0A841',
+  warningSoft: '#3A2B0E',
+  error: '#F0675E',
+  errorSoft: '#3D1C1B',
+
+  chartBlue: '#7FA3D1',
+  chartAmber: '#F2A93B',
+
+  onNavy: '#FFFFFF',
+  onNavyMuted: '#B9CBE6',
+  tealOnNavy: '#7FE6F0',
+  glass: 'rgba(255,255,255,0.12)',
+  scrim: 'rgba(0,0,0,0.6)',
+  white: '#FFFFFF',
+};
+
+// Live palette: its values are swapped in place by applyThemeMode(). Read it during render
+// (or inside themedStyles) so the current theme is picked up.
+export const palette: Palette = { ...lightPalette };
 
 // Legacy token set kept only for the FYP-2 preview screens and AppLogo. Values point at the
 // logo palette. New code uses `palette`.
@@ -103,8 +153,9 @@ export interface ThemePalette {
   overlay: string;
 }
 
-export const lightColors: ThemePalette = {
-  isDark: false,
+function buildLegacy(palette: Palette, isDark: boolean): ThemePalette {
+  return {
+  isDark,
   brandNavy: palette.navy,
   brandNavyDark: '#001A44',
   brandNavyLight: palette.navy2,
@@ -144,7 +195,7 @@ export const lightColors: ThemePalette = {
   textLight: palette.white,
   textOnPrimary: palette.white,
   textCyan: palette.tealInk,
-  urduText: palette.navy,
+  urduText: palette.navyText,
 
   success: palette.success,
   successLight: palette.successSoft,
@@ -172,6 +223,27 @@ export const lightColors: ThemePalette = {
   white: palette.white,
   black: '#000000',
   overlay: palette.scrim,
-};
+  };
+}
 
-export const colors = lightColors;
+export const lightColors: ThemePalette = buildLegacy(lightPalette, false);
+export const darkColors: ThemePalette = buildLegacy(darkPalette, true);
+
+// Live legacy token set, swapped together with `palette`.
+export const colors: ThemePalette = { ...lightColors };
+
+let mode: ThemeMode = 'light';
+let version = 0;
+
+export const getThemeMode = () => mode;
+export const getThemeVersion = () => version;
+
+export function applyThemeMode(next: ThemeMode) {
+  if (next === mode) return;
+  mode = next;
+  version += 1;
+  Object.assign(palette, next === 'dark' ? darkPalette : lightPalette);
+  Object.assign(colors, next === 'dark' ? darkColors : lightColors);
+  shadow.bar = `0px -1px 0px ${palette.line}, 0px -6px 18px rgba(0, 35, 88, 0.05)`;
+}
+

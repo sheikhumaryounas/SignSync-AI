@@ -8,15 +8,15 @@ export interface AppTextProps extends TextProps {
   align?: TextStyle['textAlign'];
 }
 
-const defaultColor: Partial<Record<TextVariant, string>> = {
-  display: palette.navy,
-  title: palette.navy,
+const defaultColor = (): Partial<Record<TextVariant, string>> => ({
+  display: palette.navyText,
+  title: palette.navyText,
   heading: palette.ink,
   label: palette.muted,
   caption: palette.ink2,
   urdu: palette.ink,
   urduSm: palette.ink2,
-};
+});
 
 const URDU_RE = /[؀-ۿ]/;
 const strongVariants: TextVariant[] = ['display', 'title', 'heading', 'button', 'label'];
@@ -60,7 +60,7 @@ export function AppText({ variant = 'body', color, align, style, children, ...re
       style={[
         base,
         scaled,
-        { color: color ?? defaultColor[variant] ?? palette.ink },
+        { color: color ?? defaultColor()[variant] ?? palette.ink },
         urdu,
         align ? { textAlign: align } : isRTL ? { textAlign: 'right' } : null,
         style,

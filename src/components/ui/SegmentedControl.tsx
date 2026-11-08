@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, View, ViewStyle } from 'react-native';
-import { fonts, palette, radius } from '../../theme';
+import { fonts, palette, radius, themedStyles } from '../../theme';
 import { AppText } from './AppText';
 
 export interface SegmentOption<T extends string> {
@@ -43,7 +43,7 @@ export function SegmentedControl<T extends string>({
           >
             <AppText
               variant="bodySm"
-              color={on ? palette.navy : palette.ink2}
+              color={on ? palette.navyText : palette.ink2}
               // Fixed height + centred text keeps Nastaliq on the same centre line as Latin labels.
               style={opt.urdu ? styles.urdu : { fontFamily: on ? fonts.semibold : fonts.medium }}
             >
@@ -56,9 +56,9 @@ export function SegmentedControl<T extends string>({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   track: { flexDirection: 'row', backgroundColor: palette.line2, borderRadius: radius.md, padding: 3, gap: 3 },
   seg: { flex: 1, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
   on: { backgroundColor: palette.surface, boxShadow: '0px 1px 3px rgba(0, 35, 88, 0.14)' },
   urdu: { fontFamily: fonts.urdu, fontSize: 13, lineHeight: 24, writingDirection: 'rtl', paddingBottom: 2 },
-});
+}));

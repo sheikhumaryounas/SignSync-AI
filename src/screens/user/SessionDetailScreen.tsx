@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { fonts, palette, radius, shadow, spacing, useDirection } from '../../theme';
+import { fonts, palette, radius, shadow, spacing, useDirection, themedStyles } from '../../theme';
 import { AppText, Chip, ConfirmDialog, EmptyState, IconButton, Screen } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { usePreferences } from '../../context/PreferencesContext';
@@ -137,7 +137,7 @@ function Bubble({ record, outputLanguage }: { record: TranslationRecord; outputL
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   head: {
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -173,4 +173,4 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     letterSpacing: 0.3,
   },
-});
+}));

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet } from 'react-native';
-import { palette } from '../../theme';
+import { palette, themedStyles } from '../../theme';
 
 interface ToggleProps {
   value: boolean;
@@ -37,7 +37,7 @@ export function Toggle({ value, onValueChange, accessibilityLabel, disabled = fa
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   track: { width: TRACK_W, height: THUMB + PAD * 2, borderRadius: 13, padding: PAD, justifyContent: 'center' },
   thumb: {
     width: THUMB,
@@ -46,4 +46,4 @@ const styles = StyleSheet.create({
     backgroundColor: palette.white,
     boxShadow: '0px 1px 3px rgba(0, 35, 88, 0.3)',
   },
-});
+}));

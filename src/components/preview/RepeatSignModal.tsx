@@ -1,7 +1,7 @@
 import React from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { palette, radius, spacing, useDirection } from '../../theme';
+import { palette, radius, spacing, useDirection, themedStyles } from '../../theme';
 import { SignVocabularyItem } from '../../types';
 import { AppText, Button, Chip, IconBadge, IconName } from '../ui';
 import { StringKey, useI18n } from '../../i18n';
@@ -81,7 +81,7 @@ export function RepeatSignModal({ visible, score, threshold, suggestions, onRetr
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   scrim: { flex: 1, backgroundColor: palette.scrim, justifyContent: 'center', padding: spacing.lg },
   card: { backgroundColor: palette.surface, borderRadius: radius.xl, padding: spacing.xl, gap: spacing.lg },
   head: { alignItems: 'flex-start', gap: spacing.md },
@@ -90,4 +90,4 @@ const styles = StyleSheet.create({
   tip: { alignItems: 'center', gap: spacing.sm },
   chips: { flexWrap: 'wrap', gap: spacing.sm },
   secondary: { gap: spacing.sm },
-});
+}));

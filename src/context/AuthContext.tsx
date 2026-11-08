@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { User } from '../types';
-import { api, AuthSession, RegisterInput } from '../services/api';
+import { api, AuthSession, ProfileUpdate, RegisterInput } from '../services/api';
 import { clearSession, isExpired, readSession, writeSession } from '../services/session';
 
 type AuthStatus = 'loading' | 'signedOut' | 'signedIn';
@@ -13,6 +13,10 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   register: (input: RegisterInput) => Promise<void>;
   logout: () => Promise<void>;
+  /** Saves name, email and photo; throws ApiError (validation, email_taken) on failure. */
+  updateProfile: (input: ProfileUpdate) => Promise<void>;
+  /** Re-reads the signed-in user from the server (pull-to-refresh). */
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -82,6 +86,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const token = tokenRef.current;
         if (token) await api.auth.logout(token).catch(() => undefined);
         await signOutLocally();
+      },
+      updateProfile: async (input) => {
+        const token = tokenRef.current;
+        if (!token) return;
+        setUser(await api.auth.updateProfile(token, input));
+      },
+      refreshUser: async () => {
+        const token = tokenRef.current;
+        if (!token) return;
+        setUser(await api.auth.me(token));
       },
     }),
     [status, user, accessToken, start, signOutLocally]

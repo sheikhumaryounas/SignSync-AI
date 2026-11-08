@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { fonts, palette, radius, spacing, useDirection } from '../../theme';
+import { fonts, palette, radius, spacing, useDirection, themedStyles } from '../../theme';
 import { RootStackParamList, SignVocabularyItem } from '../../types';
 import { AppText, Button, Card, Chip, Screen, StatusPill } from '../../components/ui';
 import { usePreview } from '../../context/PreviewContext';
@@ -216,13 +216,13 @@ export default function SignRecognitionScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   content: { paddingTop: spacing.md },
   headerAction: { minHeight: 44, paddingHorizontal: spacing.md },
   card: { gap: spacing.md },
   between: { alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   output: { gap: spacing.xs },
-  english: { fontFamily: fonts.semibold, fontSize: 17, lineHeight: 24, color: palette.navy },
+  english: { fontFamily: fonts.semibold, fontSize: 17, lineHeight: 24, color: palette.navyText },
   group: { gap: spacing.sm },
   chips: { flexWrap: 'wrap', gap: spacing.sm },
   token: {
@@ -236,4 +236,4 @@ const styles = StyleSheet.create({
   tokenText: { fontFamily: fonts.medium },
   actions: { gap: spacing.sm },
   flex: { flex: 1 },
-});
+}));

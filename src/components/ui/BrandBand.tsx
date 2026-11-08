@@ -1,8 +1,9 @@
 import React from 'react';
 import { StyleSheet, View, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { palette, spacing } from '../../theme';
+import { palette, spacing, themedStyles } from '../../theme';
 import { CircuitLines } from './CircuitLines';
+import { Stagger } from './motion';
 
 interface BrandBandProps {
   children: React.ReactNode;
@@ -21,12 +22,12 @@ export function BrandBand({ children, circuitPosition = 'bottom', style }: Brand
       >
         <CircuitLines width={circuitPosition === 'top' ? 170 : 200} opacity={0.32} />
       </View>
-      {children}
+      <Stagger>{children}</Stagger>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   band: {
     backgroundColor: palette.navy,
     paddingHorizontal: spacing.lg,
@@ -35,4 +36,4 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   circuit: { position: 'absolute', right: -26 },
-});
+}));

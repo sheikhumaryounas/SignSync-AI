@@ -4,7 +4,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { palette } from '../theme';
+import { palette, themedStyles } from '../theme';
 import { AppLogo } from '../components/AppLogo';
 
 interface SplashScreenProps {
@@ -74,7 +74,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   container: {
     flex: 1,
     // Matches the white native splash so the hand-off is seamless.
@@ -94,6 +94,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 24,
   },
-});
+}));
 
 export default SplashScreen;

@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { palette, spacing, useDirection } from '../../theme';
+import { palette, spacing, useDirection, themedStyles } from '../../theme';
 import { RootStackParamList } from '../../types';
 import { AppText, Button, Card, Chip, Input, Screen } from '../../components/ui';
 import { usePreview } from '../../context/PreviewContext';
@@ -89,10 +89,10 @@ export default function TextToSignScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   content: { paddingTop: spacing.md },
   card: { gap: spacing.md },
   head: { alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm, minHeight: 36 },
   chips: { flexWrap: 'wrap', gap: spacing.sm },
   save: { minHeight: 44, paddingHorizontal: spacing.md, borderColor: palette.line },
-});
+}));

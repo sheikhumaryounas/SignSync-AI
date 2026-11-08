@@ -12,6 +12,7 @@ import {
   validationMessages,
 } from '../auth';
 import { ApiError, AuthSession } from '../types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ACCOUNTS_KEY, readJson, userIdFromToken, writeJson } from './store';
 import { seedPreferences } from './preferencesMock';
 
@@ -28,6 +29,14 @@ export const DEMO_ACCOUNTS: Record<UserRole, { email: string; name: string }> = 
   normal: { email: 'saad.dev@signsync.ai', name: 'Muhammad Saad' },
   admin: { email: 'admin@signsync.ai', name: 'Mr. M Shahbaz Ayyaz' },
 };
+
+// Photos live under their own key so the accounts blob stays small.
+const avatarKey = (uid: string) => `signsync.mock.avatar.${uid}`;
+
+async function withAvatar(user: User): Promise<User> {
+  const avatarUrl = await readJson<string>(avatarKey(user.id)).catch(() => null);
+  return avatarUrl ? { ...user, avatarUrl } : user;
+}
 
 const failedAttempts = new Map<string, number[]>();
 const delay = (ms = 450) => new Promise((r) => setTimeout(r, ms));
@@ -124,7 +133,7 @@ export const mockAuth: AuthApi = {
       );
     }
     failedAttempts.delete(email);
-    return issue(account.user);
+    return issue(await withAvatar(account.user));
   },
 
   async me(accessToken) {
@@ -132,7 +141,37 @@ export const mockAuth: AuthApi = {
     const userId = userIdFromToken(accessToken);
     const account = Object.values(await load()).find((a) => a.user.id === userId);
     if (!account) throw new ApiError('unauthorized', 'Your session has ended. Sign in again.');
-    return account.user;
+    return withAvatar(account.user);
+  },
+
+  async updateProfile(accessToken, input) {
+    await delay();
+    const userId = userIdFromToken(accessToken);
+    const email = norm(input.email);
+    const checks: [string, ReturnType<typeof validateEmail>][] = [
+      ['name', validateName(input.name)],
+      ['email', validateEmail(email)],
+    ];
+    for (const [field, code] of checks) {
+      if (code) throw new ApiError('validation', validationMessages[code], { field, validation: code });
+    }
+
+    const accounts = await load();
+    const oldEmail = Object.keys(accounts).find((k) => accounts[k].user.id === userId);
+    if (!oldEmail) throw new ApiError('unauthorized', 'Your session has ended. Sign in again.');
+    if (email !== oldEmail && accounts[email]) {
+      throw new ApiError('email_taken', 'An account with this email already exists.', { field: 'email' });
+    }
+    // Accounts are keyed by email, so a new email moves the record.
+    const account = accounts[oldEmail];
+    delete accounts[oldEmail];
+    account.user = { ...account.user, name: input.name.trim(), email };
+    accounts[email] = account;
+    await save(accounts);
+
+    if (input.avatarUrl) await writeJson(avatarKey(userId), input.avatarUrl);
+    else if (input.avatarUrl === null) await AsyncStorage.removeItem(avatarKey(userId));
+    return withAvatar(account.user);
   },
 
   async logout() {

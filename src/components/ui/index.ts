@@ -20,3 +20,6 @@ export { IconButton } from './IconButton';
 export type { IconName } from './icons';
 export { ConfirmDialog } from './ConfirmDialog';
 export type { NoticeTone } from './Notice';
+export { Avatar, initials } from './Avatar';
+export { usePullRefresh } from './usePullRefresh';
+export { FadeIn, Stagger, usePressScale, useReduceMotion } from './motion';

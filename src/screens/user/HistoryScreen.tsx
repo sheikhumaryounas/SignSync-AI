@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { RefreshControl, SectionList, StyleSheet, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { palette, spacing, useDirection } from '../../theme';
-import { AppText, Button, Card, Chip, EmptyState, IconBadge, Input, SectionLabel } from '../../components/ui';
+import { palette, spacing, useDirection, themedStyles } from '../../theme';
+import { AppText, Button, Card, Chip, EmptyState, FadeIn, IconBadge, Input, SectionLabel, Stagger } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { usePreferences } from '../../context/PreferencesContext';
 import { StringKey, useI18n } from '../../i18n';
@@ -88,6 +88,7 @@ export default function HistoryScreen() {
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <View style={styles.head}>
+        <Stagger>
         <AppText variant="title" accessibilityRole="header">
           {t('history.title')}
         </AppText>
@@ -97,6 +98,7 @@ export default function HistoryScreen() {
             <Chip key={f.label} label={t(f.label)} selected={modality === f.value} onPress={() => setModality(f.value)} />
           ))}
         </View>
+        </Stagger>
       </View>
 
       <SectionList
@@ -112,9 +114,10 @@ export default function HistoryScreen() {
             <SectionLabel label={section.title} />
           </View>
         )}
-        renderItem={({ item }) => {
+        renderItem={({ item, index }) => {
           const lines = linesFor(prefs.outputLanguage, item.previewEn, item.previewUr);
           return (
+            <FadeIn index={index + 2}>
             <Card onPress={() => navigation.navigate('SessionDetail', { id: item.id })} accessibilityLabel={item.title} style={styles.card}>
               <View style={[styles.cardHead, row]}>
                 <IconBadge icon={modalityIcon[item.modality]} tone={item.modality === 'sign_to_text' ? 'teal' : 'navy'} size="sm" />
@@ -146,6 +149,7 @@ export default function HistoryScreen() {
                 </AppText>
               </View>
             </Card>
+            </FadeIn>
           );
         }}
         ListEmptyComponent={
@@ -171,7 +175,7 @@ export default function HistoryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   root: { flex: 1, backgroundColor: palette.canvas },
   head: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, gap: spacing.md, paddingBottom: spacing.sm },
   chips: { flexWrap: 'wrap', gap: spacing.sm },
@@ -182,4 +186,4 @@ const styles = StyleSheet.create({
   meta: { flexWrap: 'wrap', gap: spacing.md },
   empty: { gap: spacing.md },
   flex: { flex: 1 },
-});
+}));
