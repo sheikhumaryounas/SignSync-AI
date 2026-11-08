@@ -10,7 +10,7 @@ import RegisterScreen from '../screens/auth/RegisterScreen';
 import SignRecognitionScreen from '../screens/preview/SignRecognitionScreen';
 import VoiceSignScreen from '../screens/preview/VoiceSignScreen';
 import TextToSignScreen from '../screens/preview/TextToSignScreen';
-import BidirectionalChatScreen from '../screens/preview/BidirectionalChatScreen';
+import PreferencesScreen from '../screens/user/PreferencesScreen';
 import SessionDetailScreen from '../screens/user/SessionDetailScreen';
 import EditProfileScreen from '../screens/user/EditProfileScreen';
 import CompareVersionsScreen from '../screens/admin/CompareVersionsScreen';
@@ -38,7 +38,10 @@ export default function RootNavigator() {
               <Stack.Screen name="CompareVersions" component={CompareVersionsScreen} />
             </>
           ) : (
-            <Stack.Screen name="Main" component={UserTabs} />
+            <>
+              <Stack.Screen name="Main" component={UserTabs} />
+              <Stack.Screen name="Preferences" component={PreferencesScreen} />
+            </>
           )}
           <Stack.Screen name="SessionDetail" component={SessionDetailScreen} />
           <Stack.Screen name="EditProfile" component={EditProfileScreen} />
@@ -46,7 +49,6 @@ export default function RootNavigator() {
           <Stack.Screen name="SignRecognition" component={SignRecognitionScreen} />
           <Stack.Screen name="VoiceSign" component={VoiceSignScreen} />
           <Stack.Screen name="TextToSign" component={TextToSignScreen} />
-          <Stack.Screen name="BidirectionalChat" component={BidirectionalChatScreen} />
         </Stack.Group>
       )}
     </Stack.Navigator>

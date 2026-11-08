@@ -73,6 +73,7 @@ export const en = {
   'tab.home': 'Home',
   'tab.history': 'History',
   'tab.settings': 'Settings',
+  'tab.conversation': 'Conversation',
   'tab.profile': 'Profile',
   'tab.metrics': 'Metrics',
   'tab.vocabulary': 'Vocabulary',

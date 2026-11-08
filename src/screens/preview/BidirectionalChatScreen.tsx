@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
 import { palette, radius, shadow, spacing, useDirection, themedStyles } from '../../theme';
-import { RootStackParamList, SignVocabularyItem } from '../../types';
+import { SignVocabularyItem } from '../../types';
 import { AppText, Button, Chip, FadeIn, IconBadge, IconButton, Input, SegmentedControl } from '../../components/ui';
 import { usePreview } from '../../context/PreviewContext';
 import { useFeedback } from '../../context/FeedbackContext';
@@ -13,7 +13,6 @@ import { SignAvatarComponent } from '../../components/preview/SignAvatarComponen
 import { correctSignSequence, mapTextToSignSequence, signName, signNameEn } from '../../services/preview/aiEngine';
 import { isUrduText, linesFor, timeLabel } from '../../utils/format';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'BidirectionalChat'>;
 type Side = 'signer' | 'speaker';
 
 interface ChatTurn {
@@ -37,7 +36,9 @@ const SAMPLE_SPEECH = {
   en: 'Please take a seat. Your medicine will be ready in five minutes.',
 };
 
-export default function BidirectionalChatScreen({ navigation }: Props) {
+export default function BidirectionalChatScreen() {
+  // Lives in the user tab bar and opens the root-stack camera screen, so it uses the untyped hook.
+  const navigation = useNavigation<any>();
   const { preferences, vocabulary, addSession, speakText } = usePreview();
   const { notify } = useFeedback();
   const { t, lang } = useI18n();
@@ -114,10 +115,9 @@ export default function BidirectionalChatScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.root} edges={['top']}>
       <HeaderBar
         title={t('home.modeChat')}
-        onBack={navigation.goBack}
         rightAction={<Button title={t('preview.save')} icon="bookmark-outline" variant="ghost" fullWidth={false} style={styles.save} onPress={onSave} />}
       />
       <KeyboardAvoidingView style={styles.flex} behavior="padding">

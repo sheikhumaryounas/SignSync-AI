@@ -10,13 +10,12 @@ import { StringKey, useI18n } from '../../i18n';
 import { api, SessionSummary } from '../../services/api';
 import { channelsLabel, greetingKey, metaLine, modalityIcon, outputLanguageLabel, signCountLabel, whenLabel } from '../../utils/format';
 
-type PreviewRoute = 'SignRecognition' | 'VoiceSign' | 'TextToSign' | 'BidirectionalChat';
+type PreviewRoute = 'SignRecognition' | 'VoiceSign' | 'TextToSign';
 
 const modes: { route: PreviewRoute; icon: IconName; label: StringKey }[] = [
   { route: 'SignRecognition', icon: 'hand-left-outline', label: 'home.modeSign' },
   { route: 'VoiceSign', icon: 'mic-outline', label: 'home.modeSpeak' },
   { route: 'TextToSign', icon: 'text-outline', label: 'home.modeType' },
-  { route: 'BidirectionalChat', icon: 'chatbubbles-outline', label: 'home.modeChat' },
 ];
 
 export default function HomeScreen() {

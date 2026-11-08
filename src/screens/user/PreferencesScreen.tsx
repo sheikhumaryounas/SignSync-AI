@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { palette, spacing, useDirection, themedStyles } from '../../theme';
 import {
   AppText,
@@ -9,6 +10,7 @@ import {
   Chip,
   ConfirmDialog,
   IconBadge,
+  IconButton,
   IconName,
   Input,
   Notice,
@@ -35,7 +37,10 @@ const channels: { key: ChannelKey; channel: FeedbackChannel; icon: IconName; tit
 
 export default function PreferencesScreen() {
   const { t } = useI18n();
-  const { row: dirRow } = useDirection();
+  const { row: dirRow, back } = useDirection();
+  const navigation = useNavigation();
+  // Users open settings as a stacked screen (needs a back button); admins have it as a tab.
+  const stacked = navigation.getState()?.type === 'stack';
   const { prefs, syncState, profiles, save, createProfile, deleteProfile, applyProfile, reload } = usePreferences();
   const { notify, preview } = useFeedback();
   const { isDark, setMode } = useThemeMode();
@@ -109,6 +114,7 @@ export default function PreferencesScreen() {
 
   return (
     <Screen
+      edges={stacked ? ['top', 'bottom'] : ['top']}
       onRefresh={reload}
       footer={
         <View style={[styles.footer, dirRow]}>
@@ -118,7 +124,8 @@ export default function PreferencesScreen() {
       }
     >
       <View style={[styles.header, dirRow]}>
-        <AppText variant="title" accessibilityRole="header">
+        {stacked ? <IconButton icon={back} onPress={navigation.goBack} accessibilityLabel={t('common.back')} /> : null}
+        <AppText variant="title" accessibilityRole="header" style={styles.flex}>
           {t('prefs.title')}
         </AppText>
         <StatusPill label={status.label} tone={status.tone} />

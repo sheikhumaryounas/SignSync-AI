@@ -7,7 +7,8 @@ import { useI18n } from '../../i18n';
 
 interface HeaderBarProps {
   title: string;
-  onBack: () => void;
+  /** Omitted when the screen is a tab, which has nothing to go back to. */
+  onBack?: () => void;
   rightAction?: React.ReactNode;
 }
 
@@ -19,7 +20,7 @@ export function HeaderBar({ title, onBack, rightAction }: HeaderBarProps) {
 
   return (
     <View style={[styles.header, row]}>
-      <IconButton icon={back} tone="outline" onPress={onBack} accessibilityLabel={t('common.back')} />
+      {onBack ? <IconButton icon={back} tone="outline" onPress={onBack} accessibilityLabel={t('common.back')} /> : null}
       <View style={styles.titles}>
         <AppText variant="title" accessibilityRole="header" numberOfLines={1}>
           {title}

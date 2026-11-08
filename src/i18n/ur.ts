@@ -75,6 +75,7 @@ export const ur: Record<StringKey, string> = {
   'tab.home': 'ہوم',
   'tab.history': 'ہسٹری',
   'tab.settings': 'ترتیبات',
+  'tab.conversation': 'گفتگو',
   'tab.profile': 'پروفائل',
   'tab.metrics': 'میٹرکس',
   'tab.vocabulary': 'الفاظ',

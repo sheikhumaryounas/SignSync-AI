@@ -166,7 +166,7 @@ export default function HistoryScreen() {
               title={t('history.emptyTitle')}
               message={t('history.emptyMsg')}
               actionLabel={t('history.emptyAction')}
-              onAction={() => navigation.navigate('BidirectionalChat')}
+              onAction={() => navigation.navigate('Conversation')}
             />
           )
         }

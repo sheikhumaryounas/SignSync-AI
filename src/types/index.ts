@@ -76,7 +76,7 @@ export interface SignVocabularyItem {
 export type UserTabParamList = {
   Home: undefined;
   CommunicationHistory: { openSessionId?: string } | undefined;
-  Preferences: undefined;
+  Conversation: undefined;
   Profile: undefined;
 };
 
@@ -98,6 +98,7 @@ export type RootStackParamList = {
   SignRecognition: { initialMode?: 'live' | 'practice'; targetSignId?: string } | undefined;
   VoiceSign: undefined;
   TextToSign: undefined;
-  BidirectionalChat: undefined;
+  // Users reach settings from Profile and Home; admins keep it as a tab.
+  Preferences: undefined;
   EditProfile: undefined;
 };
