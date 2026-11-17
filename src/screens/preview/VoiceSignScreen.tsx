@@ -83,7 +83,7 @@ export default function VoiceSignScreen({ navigation }: Props) {
         <HeaderBar
           title={t('home.modeSpeak')}
           onBack={navigation.goBack}
-          rightAction={<Button title={t('preview.save')} icon="bookmark-outline" variant="ghost" fullWidth={false} style={styles.save} onPress={onSave} />}
+          rightAction={<Button title={t('preview.save')} variant="ghost" fullWidth={false} style={styles.save} onPress={onSave} />}
         />
       }
     >
@@ -124,6 +124,7 @@ export default function VoiceSignScreen({ navigation }: Props) {
           multiline
           numberOfLines={2}
           placeholder={t('speech.placeholder')}
+          maxLength={300}
         />
 
         <AppText variant="label">{t('preview.phrases')}</AppText>

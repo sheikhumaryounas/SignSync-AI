@@ -35,6 +35,8 @@ const channels: { key: ChannelKey; channel: FeedbackChannel; icon: IconName; tit
   { key: 'hapticFeedback', channel: 'haptic', icon: 'phone-portrait-outline', title: 'fb.haptic', desc: 'prefs.hapticDesc' },
 ];
 
+const PROFILE_NAME_MAX = 30;
+
 export default function PreferencesScreen() {
   const { t } = useI18n();
   const { row: dirRow, back } = useDirection();
@@ -93,6 +95,10 @@ export default function PreferencesScreen() {
   };
 
   const onCreateProfile = async () => {
+    const clean = profileName.trim();
+    if (!clean) return setProfileError(t('error.profile_name_required'));
+    if (clean.length > PROFILE_NAME_MAX) return setProfileError(t('error.profile_name_long'));
+    if (profiles.some((p) => p.name.toLowerCase() === clean.toLowerCase())) return setProfileError(t('error.profile_name_taken'));
     try {
       const created = await createProfile(profileName);
       setNaming(false);
@@ -227,6 +233,7 @@ export default function PreferencesScreen() {
                 setProfileError(undefined);
               }}
               error={profileError}
+              maxLength={PROFILE_NAME_MAX}
               autoFocus
               returnKeyType="done"
               onSubmitEditing={onCreateProfile}

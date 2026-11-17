@@ -95,11 +95,12 @@ export function Stagger({ children, delay = 0 }: { children: React.ReactNode; de
   );
 }
 
-// Springy press feedback: returns a scale value plus handlers to spread on a Pressable.
-export function usePressScale(to = 0.97) {
+// Subtle press feedback: returns a scale value plus handlers to spread on a Pressable.
+// No overshoot on release; a bounce reads as playful rather than responsive.
+export function usePressScale(to = 0.985) {
   const scale = useRef(new Animated.Value(1)).current;
   const spring = (toValue: number) =>
-    Animated.spring(scale, { toValue, useNativeDriver: true, speed: 40, bounciness: toValue === 1 ? 6 : 0 }).start();
+    Animated.timing(scale, { toValue, useNativeDriver: true, duration: 110, easing: Easing.out(Easing.quad) }).start();
   return {
     scale,
     onPressIn: () => spring(to),

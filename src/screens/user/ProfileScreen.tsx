@@ -81,7 +81,7 @@ export default function ProfileScreen() {
         </View>
       </Card>
 
-      <Button title={t('profile.signOut')} variant="danger" icon="log-out-outline" onPress={() => setConfirming(true)} />
+      <Button title={t('profile.signOut')} variant="danger" onPress={() => setConfirming(true)} />
 
       <ConfirmDialog
         visible={confirming}

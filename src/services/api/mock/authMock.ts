@@ -93,7 +93,7 @@ export const mockAuth: AuthApi = {
 
     const accounts = await load();
     if (accounts[email]) {
-      throw new ApiError('email_taken', 'An account with this email already exists. Sign in instead.', { field: 'email' });
+      throw new ApiError('email_taken', 'An account with this email address already exists.', { field: 'email' });
     }
     const user: User = {
       id: `usr_${Date.now().toString(36)}`,
@@ -114,7 +114,7 @@ export const mockAuth: AuthApi = {
     const failures = recentFailures(email);
     if (failures.length >= LOGIN_MAX_ATTEMPTS) {
       const retryAfterSec = Math.ceil((failures[0] + LOGIN_WINDOW_MS - Date.now()) / 1000);
-      throw new ApiError('rate_limited', `Too many attempts. Try again in ${Math.ceil(retryAfterSec / 60)} minutes.`, {
+      throw new ApiError('rate_limited', `Too many unsuccessful attempts. Please try again in ${Math.ceil(retryAfterSec / 60)} minutes.`, {
         retryAfterSec,
         attemptsLeft: 0,
       });
@@ -127,8 +127,8 @@ export const mockAuth: AuthApi = {
       throw new ApiError(
         'invalid_credentials',
         attemptsLeft > 0
-          ? `Email or password is incorrect. ${attemptsLeft} ${attemptsLeft === 1 ? 'try' : 'tries'} left before a 15-minute pause.`
-          : 'Email or password is incorrect. Sign-in is paused for 15 minutes.',
+          ? `The email or password you entered is incorrect. You have ${attemptsLeft} ${attemptsLeft === 1 ? 'attempt' : 'attempts'} remaining.`
+          : 'The email or password you entered is incorrect. For your security, sign-in is paused for 15 minutes.',
         { attemptsLeft }
       );
     }
@@ -140,7 +140,7 @@ export const mockAuth: AuthApi = {
     await delay(150);
     const userId = userIdFromToken(accessToken);
     const account = Object.values(await load()).find((a) => a.user.id === userId);
-    if (!account) throw new ApiError('unauthorized', 'Your session has ended. Sign in again.');
+    if (!account) throw new ApiError('unauthorized', 'Your session has expired. Please sign in again.');
     return withAvatar(account.user);
   },
 
@@ -158,9 +158,9 @@ export const mockAuth: AuthApi = {
 
     const accounts = await load();
     const oldEmail = Object.keys(accounts).find((k) => accounts[k].user.id === userId);
-    if (!oldEmail) throw new ApiError('unauthorized', 'Your session has ended. Sign in again.');
+    if (!oldEmail) throw new ApiError('unauthorized', 'Your session has expired. Please sign in again.');
     if (email !== oldEmail && accounts[email]) {
-      throw new ApiError('email_taken', 'An account with this email already exists.', { field: 'email' });
+      throw new ApiError('email_taken', 'An account with this email address already exists.', { field: 'email' });
     }
     // Accounts are keyed by email, so a new email moves the record.
     const account = accounts[oldEmail];

@@ -118,7 +118,7 @@ export default function BidirectionalChatScreen() {
     <SafeAreaView style={styles.root} edges={['top']}>
       <HeaderBar
         title={t('home.modeChat')}
-        rightAction={<Button title={t('preview.save')} icon="bookmark-outline" variant="ghost" fullWidth={false} style={styles.save} onPress={onSave} />}
+        rightAction={<Button title={t('preview.save')} variant="ghost" fullWidth={false} style={styles.save} onPress={onSave} />}
       />
       <KeyboardAvoidingView style={styles.flex} behavior="padding">
         <View style={styles.switcher}>
@@ -228,6 +228,7 @@ export default function BidirectionalChatScreen() {
                   onChangeText={setDraft}
                   urdu={isUrduText(draft)}
                   placeholder={t('chat.placeholder')}
+                  maxLength={500}
                   accessibilityLabel={t('chat.placeholder')}
                   returnKeyType="send"
                   onSubmitEditing={sendText}

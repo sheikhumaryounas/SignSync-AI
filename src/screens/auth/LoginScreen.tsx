@@ -7,7 +7,7 @@ import { AppText, Button, Chip, Input, Notice, Screen } from '../../components/u
 import { LanguageToggle } from '../../components/LanguageToggle';
 import { useAuth } from '../../context/AuthContext';
 import { apiErrorText, StringKey, useI18n } from '../../i18n';
-import { validateEmail } from '../../services/api';
+import { EMAIL_MAX_LENGTH, PASSWORD_MAX_LENGTH, validateEmail } from '../../services/api';
 import { DEMO_ACCOUNTS, DEMO_PASSWORD } from '../../services/api/mock/authMock';
 import { AuthHeader } from './AuthHeader';
 
@@ -28,16 +28,19 @@ export default function LoginScreen({ navigation }: Props) {
   const [password, setPassword] = useState('');
   const [emailError, setEmailError] = useState<string>();
   const [passwordError, setPasswordError] = useState<string>();
+  // Wrong credentials, lockout or network problems: not tied to one field.
+  const [formError, setFormError] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
 
   const signIn = async (signInEmail: string, signInPassword: string) => {
     setSubmitting(true);
+    setFormError(undefined);
     try {
       // On success the root navigator swaps to the signed-in tree; this screen unmounts.
-      await auth.login(signInEmail, signInPassword);
+      await auth.login(signInEmail.trim(), signInPassword);
     } catch (e) {
-      setPasswordError(apiErrorText(e, t));
+      setFormError(apiErrorText(e, t));
       setSubmitting(false);
     }
   };
@@ -47,6 +50,7 @@ export default function LoginScreen({ navigation }: Props) {
     const pwMissing = !password;
     setEmailError(emailCode ? t(`error.${emailCode}` as StringKey) : undefined);
     setPasswordError(pwMissing ? t('error.password_required') : undefined);
+    setFormError(undefined);
     if (!emailCode && !pwMissing) signIn(email, password);
   };
 
@@ -56,6 +60,7 @@ export default function LoginScreen({ navigation }: Props) {
     setPassword(DEMO_PASSWORD);
     setEmailError(undefined);
     setPasswordError(undefined);
+    setFormError(undefined);
     signIn(demo.email, DEMO_PASSWORD);
   };
 
@@ -77,12 +82,15 @@ export default function LoginScreen({ navigation }: Props) {
         onChangeText={(v) => {
           setEmail(v);
           if (emailError) setEmailError(undefined);
+          if (formError) setFormError(undefined);
         }}
         error={emailError}
         keyboardType="email-address"
         autoCapitalize="none"
         autoComplete="email"
         textContentType="emailAddress"
+        autoCorrect={false}
+        maxLength={EMAIL_MAX_LENGTH}
         returnKeyType="next"
       />
       <Input
@@ -93,10 +101,13 @@ export default function LoginScreen({ navigation }: Props) {
         onChangeText={(v) => {
           setPassword(v);
           if (passwordError) setPasswordError(undefined);
+          if (formError) setFormError(undefined);
         }}
         error={passwordError}
         autoComplete="current-password"
         textContentType="password"
+        autoCorrect={false}
+        maxLength={PASSWORD_MAX_LENGTH}
         returnKeyType="go"
         onSubmitEditing={onSubmit}
       />
@@ -107,8 +118,9 @@ export default function LoginScreen({ navigation }: Props) {
         </AppText>
       </Pressable>
       {showForgot ? <Notice message={t('login.forgotInfo')} /> : null}
+      {formError ? <Notice tone="error" message={formError} /> : null}
 
-      <Button title={t('login.submit')} iconRight="arrow-forward" loading={submitting} onPress={onSubmit} />
+      <Button title={t('login.submit')} loading={submitting} onPress={onSubmit} />
 
       <View style={[styles.footer, row]}>
         <AppText variant="bodySm" color={palette.ink2}>

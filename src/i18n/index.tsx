@@ -66,16 +66,28 @@ export function apiErrorText(e: unknown, t: I18nValue['t']): string {
       if (n <= 0) return t('error.invalid_credentials_locked');
       return n === 1 ? t('error.invalid_credentials_one') : t('error.invalid_credentials', { n });
     }
-    case 'rate_limited':
-      return t('error.rate_limited', { min: Math.max(1, Math.ceil((e.details?.retryAfterSec ?? 900) / 60)) });
+    case 'rate_limited': {
+      const min = Math.max(1, Math.ceil((e.details?.retryAfterSec ?? 900) / 60));
+      return min === 1 ? t('error.rate_limited_one') : t('error.rate_limited', { min });
+    }
     case 'email_taken':
       return t('error.email_taken');
     case 'forbidden':
       return t('error.forbidden');
-    case 'validation':
-      return e.details?.validation ? t(`error.${e.details.validation}` as StringKey) : e.message;
-    default:
+    case 'unauthorized':
+      return t('error.unauthorized');
+    case 'not_found':
+      return t('error.not_found');
+    case 'duplicate':
+      return t('error.duplicate');
+    case 'validation': {
+      const key = `error.${e.details?.validation}` as StringKey;
+      return e.details?.validation && key in en ? t(key) : t('error.unknown');
+    }
+    case 'network':
       return t('error.network');
+    default:
+      return t('error.unknown');
   }
 }
 

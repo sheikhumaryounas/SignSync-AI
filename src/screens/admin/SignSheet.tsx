@@ -8,6 +8,7 @@ import { AppText, Button, Chip, IconBadge, Input, Notice, SegmentedControl, Stat
 import { useAuth } from '../../context/AuthContext';
 import { useFeedback } from '../../context/FeedbackContext';
 import { apiErrorText, StringKey, useI18n } from '../../i18n';
+import { isUrduText } from '../../utils/format';
 import { api, findDuplicate, GestureType, SAMPLE_MAX_BYTES, SAMPLE_MIME, VocabCategory, VocabEntry, VocabStatus } from '../../services/api';
 
 export const CATEGORIES: VocabCategory[] = ['greetings', 'daily', 'medical', 'emergency', 'questions', 'feelings', 'numbers'];
@@ -26,6 +27,8 @@ interface SignSheetProps {
   onChanged: (entry: VocabEntry) => void;
   onOpenExisting: (entry: VocabEntry) => void;
 }
+
+const SIGN_NAME_MAX = 40;
 
 const statusTone = { active: 'success', training: 'warning', retired: 'muted' } as const;
 
@@ -61,6 +64,22 @@ export function SignSheet({ visible, entry, all, onClose, onChanged, onOpenExist
 
   const duplicate = nameEn.trim() ? findDuplicate(all, nameEn, entry?.id) : undefined;
 
+  const signNameError = (v: string) => {
+    const clean = v.trim();
+    if (!clean) return t('error.sign_name_required');
+    if (clean.length > SIGN_NAME_MAX) return t('error.sign_name_long');
+    if (!/^[A-Za-z0-9][A-Za-z0-9 '-]*$/.test(clean)) return t('error.sign_name_invalid');
+    return undefined;
+  };
+
+  const urduNameError = (v: string) => {
+    const clean = v.trim();
+    if (!clean) return t('error.sign_urdu_required');
+    if (clean.length > SIGN_NAME_MAX) return t('error.sign_name_long');
+    if (/[A-Za-z]/.test(clean) || !isUrduText(clean)) return t('error.sign_urdu_invalid');
+    return undefined;
+  };
+
   const pickClips = async () => {
     const res = await DocumentPicker.getDocumentAsync({ type: SAMPLE_MIME, multiple: true, copyToCacheDirectory: false });
     if (res.canceled) return;
@@ -79,8 +98,8 @@ export function SignSheet({ visible, entry, all, onClose, onChanged, onOpenExist
   const onSave = async () => {
     if (!accessToken) return;
     const next = {
-      nameEn: nameEn.trim() ? undefined : t('error.sign_name_required'),
-      nameUr: nameUr.trim() ? undefined : t('error.sign_urdu_required'),
+      nameEn: signNameError(nameEn),
+      nameUr: urduNameError(nameUr),
       clips: clips.length && !consent ? t('error.sample_consent') : undefined,
     };
     setErrors(next);
@@ -156,6 +175,7 @@ export function SignSheet({ visible, entry, all, onClose, onChanged, onOpenExist
                     (duplicate ? t('sign.duplicate', { name: duplicate.nameEn, category: t(`cat.${duplicate.category}` as StringKey) }) : undefined)
                   }
                   autoCapitalize="words"
+                  maxLength={SIGN_NAME_MAX}
                 />
                 {duplicate ? (
                   <Pressable onPress={() => onOpenExisting(duplicate)} hitSlop={8} accessibilityRole="link" style={styles.alignStart}>
@@ -174,6 +194,7 @@ export function SignSheet({ visible, entry, all, onClose, onChanged, onOpenExist
                   setErrors((e) => ({ ...e, nameUr: undefined }));
                 }}
                 error={errors.nameUr}
+                maxLength={SIGN_NAME_MAX}
               />
 
               <View style={styles.gapSm}>
@@ -249,12 +270,12 @@ export function SignSheet({ visible, entry, all, onClose, onChanged, onOpenExist
               {entry && !confirmRetire ? (
                 <View style={styles.actions}>
                   {entry.status === 'active' ? (
-                    <Button title={t('sign.queue')} variant="ghost" icon="refresh-outline" onPress={() => changeStatus('training', 'sign.queued')} />
+                    <Button title={t('sign.queue')} variant="ghost" onPress={() => changeStatus('training', 'sign.queued')} />
                   ) : null}
                   {entry.status === 'retired' ? (
-                    <Button title={t('sign.restore')} variant="ghost" icon="arrow-undo-outline" onPress={() => changeStatus('active', 'sign.restored')} />
+                    <Button title={t('sign.restore')} variant="ghost" onPress={() => changeStatus('active', 'sign.restored')} />
                   ) : (
-                    <Button title={t('sign.retire')} variant="danger" icon="archive-outline" onPress={() => setConfirmRetire(true)} />
+                    <Button title={t('sign.retire')} variant="danger" onPress={() => setConfirmRetire(true)} />
                   )}
                 </View>
               ) : null}

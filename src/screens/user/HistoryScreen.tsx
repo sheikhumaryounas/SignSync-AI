@@ -92,7 +92,7 @@ export default function HistoryScreen() {
         <AppText variant="title" accessibilityRole="header">
           {t('history.title')}
         </AppText>
-        <Input icon="search-outline" raised placeholder={t('history.search')} value={search} onChangeText={setSearch} returnKeyType="search" accessibilityLabel={t('history.search')} />
+        <Input icon="search-outline" raised placeholder={t('history.search')} value={search} onChangeText={setSearch} maxLength={100} returnKeyType="search" accessibilityLabel={t('history.search')} />
         <View style={[styles.chips, row]}>
           {filters.map((f) => (
             <Chip key={f.label} label={t(f.label)} selected={modality === f.value} onPress={() => setModality(f.value)} />

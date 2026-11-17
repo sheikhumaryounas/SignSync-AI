@@ -74,7 +74,7 @@ export default function VocabularyScreen() {
             { value: 'retired', label: t('vocab.retired', { n: counts.retired }) },
           ]}
         />
-        <Input icon="search-outline" raised placeholder={t('vocab.search')} value={search} onChangeText={setSearch} accessibilityLabel={t('vocab.search')} />
+        <Input icon="search-outline" raised placeholder={t('vocab.search')} value={search} onChangeText={setSearch} maxLength={100} accessibilityLabel={t('vocab.search')} />
         {error ? <Notice tone="error" message={error} /> : null}
         </Stagger>
       </View>

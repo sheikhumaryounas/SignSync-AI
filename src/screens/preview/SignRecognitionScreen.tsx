@@ -171,10 +171,10 @@ export default function SignRecognitionScreen({ navigation, route }: Props) {
               style={styles.flex}
               onPress={onSpeak}
             />
-            <Button title={t('preview.save')} icon="bookmark-outline" style={styles.flex} onPress={onSave} />
+            <Button title={t('preview.save')} style={styles.flex} onPress={onSave} />
           </View>
         ) : null}
-        {captured.length > 0 ? <Button title={t('preview.clear')} icon="trash-outline" variant="danger" onPress={clear} /> : null}
+        {captured.length > 0 ? <Button title={t('preview.clear')} variant="danger" onPress={clear} /> : null}
       </Card>
 
       <Card style={styles.card}>

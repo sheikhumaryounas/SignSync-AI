@@ -69,7 +69,7 @@ export function RepeatSignModal({ visible, score, threshold, suggestions, onRetr
           ) : null}
 
           <View style={styles.group}>
-            <Button title={t('rec.retry')} icon="refresh" onPress={onRetry} />
+            <Button title={t('rec.retry')} onPress={onRetry} />
             <View style={[styles.secondary, row]}>
               <Button title={t('rec.typeInstead')} variant="ghost" onPress={onTypeInstead} style={styles.flex} />
               <Button title={t('common.cancel')} variant="ghost" onPress={onDismiss} style={styles.flex} />

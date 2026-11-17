@@ -1,12 +1,9 @@
 import React from 'react';
-import { ActivityIndicator, Animated, Pressable, StyleSheet, View, ViewStyle } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { palette, radius, spacing, useDirection } from '../../theme';
 import { AppText } from './AppText';
 import { IconName } from './icons';
-import { usePressScale } from './motion';
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 // danger = soft red for a first destructive tap; destructive = solid red for the final confirm.
 export type ButtonVariant = 'primary' | 'teal' | 'ghost' | 'danger' | 'destructive';
@@ -17,6 +14,7 @@ interface ButtonProps {
   variant?: ButtonVariant;
   disabled?: boolean;
   loading?: boolean;
+  /** Reserve for controls whose meaning the icon carries (play, pause, speak). Plain actions read better as text. */
   icon?: IconName;
   iconRight?: IconName;
   fullWidth?: boolean;
@@ -45,41 +43,38 @@ export function Button({
   accessibilityHint,
 }: ButtonProps) {
   const { row, arrowForward } = useDirection();
-  const inactive = disabled || loading;
-  const tone = inactive ? { bg: palette.line2, fg: palette.muted } : tones()[variant];
-  const { scale, onPressIn, onPressOut } = usePressScale();
+  const tone = tones()[variant];
 
   return (
-    <AnimatedPressable
+    <Pressable
       onPress={onPress}
-      onPressIn={onPressIn}
-      onPressOut={onPressOut}
-      disabled={inactive}
+      disabled={disabled || loading}
       accessibilityRole="button"
       accessibilityLabel={title}
       accessibilityHint={accessibilityHint}
-      accessibilityState={{ disabled: inactive, busy: loading }}
-      style={[
+      accessibilityState={{ disabled: disabled || loading, busy: loading }}
+      style={({ pressed }) => [
         styles.base,
-        { backgroundColor: tone.bg },
-        'border' in tone && tone.border ? { borderWidth: 1.5, borderColor: tone.border } : null,
+        { backgroundColor: tone.border && pressed ? palette.canvas : tone.bg },
+        tone.border ? { borderWidth: 1, borderColor: tone.border } : null,
+        pressed && !tone.border ? styles.pressed : null,
+        disabled && !loading ? styles.disabled : null,
         fullWidth ? styles.full : null,
         style,
-        { transform: [{ scale }] },
       ]}
     >
       {loading ? (
         <ActivityIndicator color={tone.fg} />
       ) : (
         <View style={[styles.row, row]}>
-          {icon ? <Ionicons name={icon} size={16} color={tone.fg} /> : null}
+          {icon ? <Ionicons name={icon} size={17} color={tone.fg} /> : null}
           <AppText variant="button" color={tone.fg}>
             {title}
           </AppText>
-          {iconRight ? <Ionicons name={iconRight === 'arrow-forward' ? arrowForward : iconRight} size={16} color={tone.fg} /> : null}
+          {iconRight ? <Ionicons name={iconRight === 'arrow-forward' ? arrowForward : iconRight} size={17} color={tone.fg} /> : null}
         </View>
       )}
-    </AnimatedPressable>
+    </Pressable>
   );
 }
 
@@ -93,4 +88,6 @@ const styles = StyleSheet.create({
   },
   full: { alignSelf: 'stretch' },
   row: { alignItems: 'center', gap: spacing.sm },
+  pressed: { opacity: 0.85 },
+  disabled: { opacity: 0.4 },
 });

@@ -55,7 +55,7 @@ export default function TextToSignScreen({ navigation }: Props) {
         <HeaderBar
           title={t('home.modeType')}
           onBack={navigation.goBack}
-          rightAction={<Button title={t('preview.save')} icon="bookmark-outline" variant="ghost" fullWidth={false} style={styles.save} onPress={onSave} />}
+          rightAction={<Button title={t('preview.save')} variant="ghost" fullWidth={false} style={styles.save} onPress={onSave} />}
         />
       }
     >
@@ -73,6 +73,7 @@ export default function TextToSignScreen({ navigation }: Props) {
           multiline
           numberOfLines={2}
           placeholder={t('type.placeholder')}
+          maxLength={300}
           accessibilityLabel={t('type.title')}
         />
         <AppText variant="label">{t('preview.phrases')}</AppText>

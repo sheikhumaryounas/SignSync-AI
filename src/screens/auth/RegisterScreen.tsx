@@ -3,11 +3,14 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { OutputLanguage, RootStackParamList } from '../../types';
 import { fonts, palette, radius, shadow, spacing, useDirection, themedStyles } from '../../theme';
-import { AppText, Button, IconBadge, IconName, Input, Screen, SegmentedControl } from '../../components/ui';
+import { AppText, Button, IconBadge, IconName, Input, Notice, Screen, SegmentedControl } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { apiErrorText, StringKey, useI18n } from '../../i18n';
 import {
   ApiError,
+  EMAIL_MAX_LENGTH,
+  NAME_MAX_LENGTH,
+  PASSWORD_MAX_LENGTH,
   passwordStrength,
   SelfRegisterRole,
   validateEmail,
@@ -65,7 +68,7 @@ export default function RegisterScreen({ navigation }: Props) {
     setSubmitting(true);
     setErrors({});
     try {
-      await auth.register({ name, email, password, role, outputLanguage });
+      await auth.register({ name: name.trim().replace(/\s+/g, ' '), email: email.trim(), password, role, outputLanguage });
     } catch (e) {
       setSubmitting(false);
       // EUC5 alt-flow 2.2: a registered email sends the user back with a Sign in option.
@@ -80,8 +83,16 @@ export default function RegisterScreen({ navigation }: Props) {
     }
   };
 
-  const strength = passwordStrength(password);
+  // Until the password meets the rules, the meter names the rule it is missing.
+  const passwordCode = validatePassword(password);
+  const strength = passwordCode ? Math.min(passwordStrength(password), 1) : passwordStrength(password);
   const strengthColor = strength >= 3 ? palette.success : strength === 2 ? palette.warning : palette.error;
+  const strengthText = passwordCode ? t(`error.${passwordCode}` as StringKey) : t(`register.strength${strength}` as StringKey);
+
+  // Check a field once the user leaves it, but only if they typed something.
+  const checkOnBlur = (field: 'name' | 'email', code: string | null, value: string) => {
+    if (value.trim()) setErrors((e) => ({ ...e, [field]: msg(code) }));
+  };
 
   if (step === 1) {
     return (
@@ -91,7 +102,7 @@ export default function RegisterScreen({ navigation }: Props) {
         contentStyle={styles.content}
         footer={
           <>
-            <Button title={t('register.continue')} iconRight="arrow-forward" onPress={onContinue} />
+            <Button title={t('register.continue')} onPress={onContinue} />
             <View style={[styles.footerRow, row]}>
               <AppText variant="bodySm" color={palette.ink2}>
                 {t('register.footer')}{' '}
@@ -122,10 +133,13 @@ export default function RegisterScreen({ navigation }: Props) {
             setName(v);
             setErrors((e) => ({ ...e, name: undefined }));
           }}
+          onBlur={() => checkOnBlur('name', validateName(name), name)}
           error={errors.name}
           autoComplete="name"
           textContentType="name"
           autoCapitalize="words"
+          maxLength={NAME_MAX_LENGTH}
+          returnKeyType="next"
         />
         <View style={styles.gapSm}>
           <Input
@@ -137,11 +151,15 @@ export default function RegisterScreen({ navigation }: Props) {
               setEmailTaken(false);
               setErrors((e) => ({ ...e, email: undefined }));
             }}
+            onBlur={() => checkOnBlur('email', validateEmail(email), email)}
             error={errors.email}
             keyboardType="email-address"
             autoCapitalize="none"
+            autoCorrect={false}
             autoComplete="email"
             textContentType="emailAddress"
+            maxLength={EMAIL_MAX_LENGTH}
+            returnKeyType="next"
           />
           {emailTaken ? (
             <Pressable onPress={() => navigation.navigate('Login')} hitSlop={8} style={{ alignSelf: start }} accessibilityRole="link">
@@ -164,6 +182,10 @@ export default function RegisterScreen({ navigation }: Props) {
             error={errors.password}
             autoComplete="new-password"
             textContentType="newPassword"
+            autoCorrect={false}
+            maxLength={PASSWORD_MAX_LENGTH}
+            returnKeyType="done"
+            onSubmitEditing={onContinue}
           />
           {password && !errors.password ? (
             <View style={styles.gapSm} accessibilityLiveRegion="polite">
@@ -173,7 +195,7 @@ export default function RegisterScreen({ navigation }: Props) {
                 ))}
               </View>
               <AppText variant="caption" color={strengthColor}>
-                {t(`register.strength${strength}` as StringKey)}
+                {strengthText}
               </AppText>
             </View>
           ) : null}
@@ -236,7 +258,7 @@ export default function RegisterScreen({ navigation }: Props) {
           ]}
         />
       </View>
-      {errors.submit ? <AppText variant="caption" color={palette.error}>{errors.submit}</AppText> : null}
+      {errors.submit ? <Notice tone="error" message={errors.submit} /> : null}
     </Screen>
   );
 }

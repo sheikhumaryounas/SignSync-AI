@@ -8,7 +8,7 @@ import { AppText, Avatar, Button, IconButton, Input, Notice, Screen } from '../.
 import { useAuth } from '../../context/AuthContext';
 import { useFeedback } from '../../context/FeedbackContext';
 import { apiErrorText, StringKey, useI18n } from '../../i18n';
-import { ApiError, validateEmail, validateName } from '../../services/api';
+import { ApiError, EMAIL_MAX_LENGTH, NAME_MAX_LENGTH, validateEmail, validateName } from '../../services/api';
 import { RootStackParamList } from '../../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EditProfile'>;
@@ -60,7 +60,7 @@ export default function EditProfileScreen({ navigation }: Props) {
 
     setSaving(true);
     try {
-      await updateProfile({ name, email, avatarUrl: photoChanged ? photo : undefined });
+      await updateProfile({ name: name.trim().replace(/\s+/g, ' '), email: email.trim(), avatarUrl: photoChanged ? photo : undefined });
       notify({ tone: 'success', message: t('editProfile.saved') });
       navigation.goBack();
     } catch (e) {
@@ -119,9 +119,14 @@ export default function EditProfileScreen({ navigation }: Props) {
           setName(v);
           setErrors((e) => ({ ...e, name: undefined }));
         }}
+        onBlur={() => {
+          const code = validateName(name);
+          setErrors((e) => ({ ...e, name: code ? t(`error.${code}` as StringKey) : undefined }));
+        }}
         error={errors.name}
         autoCapitalize="words"
         autoComplete="name"
+        maxLength={NAME_MAX_LENGTH}
         returnKeyType="next"
         raised
       />
@@ -133,10 +138,16 @@ export default function EditProfileScreen({ navigation }: Props) {
           setEmail(v);
           setErrors((e) => ({ ...e, email: undefined }));
         }}
+        onBlur={() => {
+          const code = validateEmail(email);
+          setErrors((e) => ({ ...e, email: code ? t(`error.${code}` as StringKey) : undefined }));
+        }}
         error={errors.email}
         keyboardType="email-address"
         autoCapitalize="none"
+        autoCorrect={false}
         autoComplete="email"
+        maxLength={EMAIL_MAX_LENGTH}
         returnKeyType="done"
         onSubmitEditing={onSave}
         hint={t('editProfile.emailHint')}

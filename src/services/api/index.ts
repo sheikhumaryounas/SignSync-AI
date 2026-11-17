@@ -24,7 +24,7 @@ export const api: {
 };
 
 export * from './types';
-export { validateEmail, validatePassword, validateName, passwordStrength, PASSWORD_MIN_LENGTH } from './auth';
+export { validateEmail, validatePassword, validateName, passwordStrength, PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH, NAME_MAX_LENGTH, EMAIL_MAX_LENGTH } from './auth';
 export type { ValidationCode } from './auth';
 export { hasFeedbackChannel, defaultSettingsFor, sameSettings } from './preferences';
 export { HISTORY_PAGE_SIZE } from './history';
