@@ -18,11 +18,31 @@ export default function ProfileScreen() {
   if (!user) return null;
   const since = new Date(user.createdAt).toLocaleDateString(lang === 'ur' ? 'ur-PK' : 'en-PK', { month: 'long', year: 'numeric' });
 
-  const rows: { icon: IconName; label: StringKey; onPress: () => void }[] = [
+  type Row = { icon: IconName; label: StringKey; onPress: () => void };
+  const rows: Row[] = [
     { icon: 'create-outline', label: 'editProfile.title', onPress: () => navigation.navigate('EditProfile') },
     { icon: 'options-outline', label: 'profile.preferences', onPress: () => navigation.navigate('Preferences') },
     { icon: 'help-circle-outline', label: 'profile.help', onPress: () => navigation.navigate('HelpSupport') },
   ];
+  const legalRows: Row[] = [
+    { icon: 'document-text-outline', label: 'profile.terms', onPress: () => navigation.navigate('Legal', { doc: 'terms' }) },
+    { icon: 'shield-checkmark-outline', label: 'profile.privacy', onPress: () => navigation.navigate('Legal', { doc: 'privacy' }) },
+  ];
+
+  const renderRow = (r: Row, i: number) => (
+    <Pressable
+      key={r.label}
+      onPress={r.onPress}
+      accessibilityRole="button"
+      style={({ pressed }) => [styles.row, dirRow, i > 0 ? styles.divider : null, pressed ? { opacity: 0.7 } : null]}
+    >
+      <IconBadge icon={r.icon} size="sm" tone="navy" />
+      <AppText variant="heading" style={styles.flex}>
+        {t(r.label)}
+      </AppText>
+      <Ionicons name={forward} size={16} color={palette.muted} />
+    </Pressable>
+  );
 
   return (
     <Screen onRefresh={refreshUser}>
@@ -58,20 +78,7 @@ export default function ProfileScreen() {
       </AppText>
 
       <Card padded={false}>
-        {rows.map((r, i) => (
-          <Pressable
-            key={r.label}
-            onPress={r.onPress}
-            accessibilityRole="button"
-            style={({ pressed }) => [styles.row, dirRow, i > 0 ? styles.divider : null, pressed ? { opacity: 0.7 } : null]}
-          >
-            <IconBadge icon={r.icon} size="sm" tone="navy" />
-            <AppText variant="heading" style={styles.flex}>
-              {t(r.label)}
-            </AppText>
-            <Ionicons name={forward} size={16} color={palette.muted} />
-          </Pressable>
-        ))}
+        {rows.map(renderRow)}
         <View style={[styles.row, dirRow, styles.divider]}>
           <IconBadge icon="language-outline" size="sm" tone="navy" />
           <AppText variant="heading" style={styles.flex}>
@@ -80,6 +87,9 @@ export default function ProfileScreen() {
           <LanguageToggle />
         </View>
       </Card>
+
+      <AppText variant="label">{t('profile.legal')}</AppText>
+      <Card padded={false}>{legalRows.map(renderRow)}</Card>
 
       <Button title={t('profile.signOut')} variant="danger" onPress={() => setConfirming(true)} />
 

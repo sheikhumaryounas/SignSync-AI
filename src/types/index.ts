@@ -102,4 +102,5 @@ export type RootStackParamList = {
   Preferences: undefined;
   EditProfile: undefined;
   HelpSupport: undefined;
+  Legal: { doc: 'terms' | 'privacy' };
 };
