@@ -76,8 +76,12 @@ export default function HomeScreen() {
           </View>
         </View>
         <View style={[styles.prefRow, row]}>
-          <Chip label={outputLanguageLabel(prefs.outputLanguage, t)} tone="glass" onPress={() => navigation.navigate('Preferences')} accessibilityHint={t('home.editPrefs')} />
-          <Chip label={channelsLabel(prefs, t)} tone="glass" onPress={() => navigation.navigate('Preferences')} accessibilityHint={t('home.editPrefs')} />
+          {outputLanguageLabel(prefs.outputLanguage, t) ? (
+            <Chip label={outputLanguageLabel(prefs.outputLanguage, t)} tone="glass" onPress={() => navigation.navigate('Preferences')} accessibilityHint={t('home.editPrefs')} />
+          ) : null}
+          {channelsLabel(prefs, t) ? (
+            <Chip label={channelsLabel(prefs, t)} tone="glass" onPress={() => navigation.navigate('Preferences')} accessibilityHint={t('home.editPrefs')} />
+          ) : null}
         </View>
       </BrandBand>
 

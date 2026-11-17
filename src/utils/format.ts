@@ -76,8 +76,23 @@ export function outputLanguageLabel(pref: OutputLanguage, t: T): string {
   return pref === 'english' ? t('out.english') : pref === 'urdu' ? t('out.urdu') : t('out.bilingual');
 }
 
-export function channelsLabel(p: { visualFeedback: boolean; audioFeedback: boolean; hapticFeedback: boolean }, t: T): string {
-  return [p.visualFeedback && t('fb.visual'), p.audioFeedback && t('fb.audio'), p.hapticFeedback && t('fb.haptic')]
-    .filter(Boolean)
-    .join(' · ');
+export function channelsLabel(
+  p: { visualFeedback?: boolean; audioFeedback?: boolean; hapticFeedback?: boolean } | null | undefined,
+  t: T
+): string {
+  if (!p) return '';
+  const parts: string[] = [];
+  if (p.visualFeedback) {
+    const v = t('fb.visual');
+    if (v && v.trim()) parts.push(v.trim());
+  }
+  if (p.audioFeedback) {
+    const a = t('fb.audio');
+    if (a && a.trim()) parts.push(a.trim());
+  }
+  if (p.hapticFeedback) {
+    const h = t('fb.haptic');
+    if (h && h.trim()) parts.push(h.trim());
+  }
+  return parts.join(' · ').trim();
 }

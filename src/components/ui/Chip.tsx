@@ -15,6 +15,9 @@ interface ChipProps {
 }
 
 export function Chip({ label, selected = false, tone = 'default', onPress, onLongPress, accessibilityHint }: ChipProps) {
+  const cleanLabel = (label ?? '').replace(/(\s*[·•,]\s*)+$/, '').trim();
+  if (!cleanLabel) return null;
+
   const look = selected ? styles.selected : styles[tone];
   const color = selected
     ? palette.white
@@ -38,7 +41,7 @@ export function Chip({ label, selected = false, tone = 'default', onPress, onLon
       style={({ pressed }) => [styles.base, look, pressed ? { opacity: 0.8 } : null]}
     >
       <AppText variant="caption" color={color} style={styles.text}>
-        {label}
+        {cleanLabel}
       </AppText>
     </Pressable>
   );
@@ -51,6 +54,7 @@ const styles = themedStyles(() => ({
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
+    alignSelf: 'flex-start',
   },
   text: { fontFamily: fonts.medium },
   default: { backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.line },
