@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, View, ViewStyle } from 'react-native
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { palette, spacing, useDirection, themedStyles } from '../../theme';
-import { AppText, Avatar, BrandBand, Card, Chip, Stagger, usePullRefresh, EmptyState, IconBadge, IconName, SectionLabel, StatusPill } from '../../components/ui';
+import { AppText, Avatar, BrandBand, Card, Chip, Stagger, usePullRefresh, EmptyState, IconBadge, IconName, SectionLabel } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { usePreferences } from '../../context/PreferencesContext';
 import { StringKey, useI18n } from '../../i18n';
@@ -87,7 +87,6 @@ export default function HomeScreen() {
           <AppText variant="label" accessibilityRole="header">
             {t('home.translate')}
           </AppText>
-          <StatusPill label={t('preview.badge')} tone="info" />
         </View>
         <View style={[styles.grid, row]}>
           {modes.map((m) => (
@@ -95,7 +94,7 @@ export default function HomeScreen() {
               key={m.route}
               style={{ ...styles.mode, alignItems: start }}
               onPress={() => navigation.navigate(m.route)}
-              accessibilityLabel={`${t(m.label)}, ${t('preview.badge')}`}
+              accessibilityLabel={t(m.label)}
             >
               <IconBadge icon={m.icon} />
               <AppText variant="heading" numberOfLines={1}>

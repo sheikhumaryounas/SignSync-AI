@@ -16,8 +16,6 @@ import {
   Notice,
   Screen,
   SegmentedControl,
-  StatusPill,
-  StatusTone,
   Toggle,
 } from '../../components/ui';
 import { usePreferences } from '../../context/PreferencesContext';
@@ -43,7 +41,7 @@ export default function PreferencesScreen() {
   const navigation = useNavigation();
   // Users open settings as a stacked screen (needs a back button); admins have it as a tab.
   const stacked = navigation.getState()?.type === 'stack';
-  const { prefs, syncState, profiles, save, createProfile, deleteProfile, applyProfile, reload } = usePreferences();
+  const { prefs, profiles, save, createProfile, deleteProfile, applyProfile, reload } = usePreferences();
   const { notify, preview } = useFeedback();
   const { isDark, setMode } = useThemeMode();
   const [draft, setDraft] = useState<PreferenceSettings>(prefs);
@@ -110,14 +108,6 @@ export default function PreferencesScreen() {
     }
   };
 
-  const status: { label: string; tone: StatusTone } = dirty
-    ? { label: t('prefs.unsaved'), tone: 'warning' }
-    : syncState === 'saving'
-      ? { label: t('prefs.saving'), tone: 'info' }
-      : syncState === 'local'
-        ? { label: t('prefs.offline'), tone: 'warning' }
-        : { label: t('prefs.synced'), tone: 'success' };
-
   return (
     <Screen
       edges={stacked ? ['top', 'bottom'] : ['top']}
@@ -134,7 +124,6 @@ export default function PreferencesScreen() {
         <AppText variant="title" accessibilityRole="header" style={styles.flex}>
           {t('prefs.title')}
         </AppText>
-        <StatusPill label={status.label} tone={status.tone} />
       </View>
 
       <View style={styles.group}>

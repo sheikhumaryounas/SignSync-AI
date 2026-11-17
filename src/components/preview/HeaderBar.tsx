@@ -12,7 +12,7 @@ interface HeaderBarProps {
   rightAction?: React.ReactNode;
 }
 
-// Header for the preview screens. Every one says plainly that it is simulated.
+// Header for the preview screens.
 export function HeaderBar({ title, onBack, rightAction }: HeaderBarProps) {
   const { isSpeaking } = usePreview();
   const { t } = useI18n();
@@ -25,10 +25,11 @@ export function HeaderBar({ title, onBack, rightAction }: HeaderBarProps) {
         <AppText variant="title" accessibilityRole="header" numberOfLines={1}>
           {title}
         </AppText>
-        <View style={[styles.pills, row]}>
-          <StatusPill label={t('preview.badge')} tone="info" />
-          {isSpeaking ? <StatusPill label={t('preview.speaking')} tone="success" /> : null}
-        </View>
+        {isSpeaking ? (
+          <View style={[styles.pills, row]}>
+            <StatusPill label={t('preview.speaking')} tone="success" />
+          </View>
+        ) : null}
       </View>
       {rightAction}
     </View>
