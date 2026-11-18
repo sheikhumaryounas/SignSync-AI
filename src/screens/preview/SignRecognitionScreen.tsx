@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { Pressable, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { fonts, palette, radius, spacing, useDirection, themedStyles } from '../../theme';
@@ -9,56 +9,57 @@ import { usePreview } from '../../context/PreviewContext';
 import { useFeedback } from '../../context/FeedbackContext';
 import { useI18n } from '../../i18n';
 import { HeaderBar } from '../../components/preview/HeaderBar';
-import { CameraPreview } from '../../components/preview/CameraPreview';
+import { SignRecorder } from '../../components/preview/SignRecorder';
 import { RepeatSignModal } from '../../components/preview/RepeatSignModal';
-import { correctSignSequence, recognizeSignLandmarks, signName, signNameEn } from '../../services/preview/aiEngine';
+import { correctSignSequence, signName, signNameEn } from '../../services/preview/aiEngine';
+import { ASL_SIGNS } from '../../services/recognition/aslSigns';
+import { SignGuess, SignResult } from '../../services/recognition/signApi';
 import { linesFor } from '../../utils/format';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SignRecognition'>;
 
-interface Captured {
-  sign: SignVocabularyItem;
-  confidence: number;
-}
-
-export default function SignRecognitionScreen({ navigation, route }: Props) {
-  const { preferences, vocabulary, addSession, speakText, isSpeaking, stopSpeaking } = usePreview();
+export default function SignRecognitionScreen({ navigation }: Props) {
+  const { preferences, addSession, speakText, isSpeaking, stopSpeaking } = usePreview();
   const { notify } = useFeedback();
   const { t, lang } = useI18n();
   const { row } = useDirection();
   const openedAt = useRef(Date.now());
-  const [scanning, setScanning] = useState(true);
-  const [showPoints, setShowPoints] = useState(true);
-  const [captured, setCaptured] = useState<Captured[]>([]);
-  const [unclear, setUnclear] = useState<Captured | null>(null);
+  const [captured, setCaptured] = useState<SignGuess[]>([]);
+  // The model's other top answers for the last sign, offered as one-tap corrections.
+  const [alternatives, setAlternatives] = useState<SignGuess[]>([]);
+  const [unclear, setUnclear] = useState<SignGuess[] | null>(null);
+  const [lastMs, setLastMs] = useState<number | null>(null);
 
-  const threshold = preferences.confidenceThreshold;
   const signs = captured.map((c) => c.sign);
   const last = captured[captured.length - 1];
   const corrected = correctSignSequence(signs.map(signNameEn));
   const lines = linesFor(preferences.outputLanguage, corrected.english, corrected.urdu);
 
-  const perform = (sign: SignVocabularyItem, confidence: number) => {
-    const result = recognizeSignLandmarks(sign, confidence);
-    // A low score never becomes output: the signer is asked to repeat it instead.
-    if (result.confidence < threshold) {
-      setUnclear({ sign: result.sign, confidence: result.confidence });
-      return;
-    }
-    if (captured.length === 0) speakText(signName(result.sign, lang), { auto: true });
-    setCaptured((prev) => [...prev, { sign: result.sign, confidence: result.confidence }]);
+  // notify() follows the user's feedback settings: banner, spoken word and/or vibration.
+  const accept = (guess: SignGuess, others: SignGuess[] = []) => {
+    const name = signName(guess.sign, lang);
+    notify({ tone: 'success', message: t('rec.recognised', { name, n: Math.round(guess.confidence * 100) }), speak: name });
+    setCaptured((prev) => [...prev, guess]);
+    setAlternatives(others.filter((g) => g.sign.id !== guess.sign.id));
   };
 
-  useEffect(() => {
-    const target = route.params?.targetSignId;
-    const found = target ? vocabulary.find((v) => v.id === target) : undefined;
-    if (found) perform(found, 0.95);
-    // Only a new target from navigation should trigger this.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [route.params?.targetSignId]);
+  // Swaps the last sign for one of the model's other answers; the replaced one becomes an option.
+  const correctLast = (choice: SignGuess) => {
+    const replaced = captured[captured.length - 1];
+    setCaptured((prev) => [...prev.slice(0, -1), choice]);
+    setAlternatives((prev) => [replaced, ...prev.filter((g) => g.sign.id !== choice.sign.id)]);
+  };
+
+  // An answer the server did not accept never becomes output: the signer is asked to sign again.
+  const onResult = ({ guesses, processingMs, accepted }: SignResult) => {
+    setLastMs(processingMs);
+    if (!accepted) setUnclear(guesses);
+    else accept(guesses[0], guesses.slice(1));
+  };
 
   const clear = () => {
     setCaptured([]);
+    setAlternatives([]);
     stopSpeaking();
   };
 
@@ -76,6 +77,7 @@ export default function SignRecognitionScreen({ navigation, route }: Props) {
       outputTextUrdu: corrected.urdu,
       outputTextEnglish: corrected.english,
       signSequence: names,
+      signConfidences: captured.map((c) => c.confidence),
       averageConfidence: captured.reduce((sum, c) => sum + c.confidence, 0) / captured.length,
       duration: `${Math.max(1, Math.round((Date.now() - openedAt.current) / 1000))}s`,
       feedbackGiven: 'up',
@@ -92,29 +94,9 @@ export default function SignRecognitionScreen({ navigation, route }: Props) {
     <Screen
       edges={['top', 'bottom']}
       contentStyle={styles.content}
-      header={
-        <HeaderBar
-          title={t('home.modeSign')}
-          onBack={navigation.goBack}
-          rightAction={
-            <Button
-              title={scanning ? t('rec.pause') : t('rec.resume')}
-              icon={scanning ? 'pause' : 'play'}
-              variant="ghost"
-              fullWidth={false}
-              style={styles.headerAction}
-              onPress={() => setScanning((s) => !s)}
-            />
-          }
-        />
-      }
+      header={<HeaderBar title={t('home.modeSign')} onBack={navigation.goBack} />}
     >
-      <CameraPreview
-        scanning={scanning}
-        showPoints={showPoints}
-        onTogglePoints={() => setShowPoints((s) => !s)}
-        result={last ? `${signName(last.sign, lang)} · ${Math.round(last.confidence * 100)}%` : undefined}
-      />
+      <SignRecorder onResult={onResult} paused={!!unclear} />
       <AppText variant="caption" color={palette.ink2}>
         {t('rec.cameraNote')}
       </AppText>
@@ -138,6 +120,9 @@ export default function SignRecognitionScreen({ navigation, route }: Props) {
             {lines.en ? <AppText style={styles.english}>{lines.en}</AppText> : null}
           </View>
         )}
+        {lastMs !== null && captured.length > 0 ? (
+          <AppText variant="caption">{t('rec.processed', { s: (lastMs / 1000).toFixed(1) })}</AppText>
+        ) : null}
 
         {captured.length > 0 ? (
           <View style={styles.group}>
@@ -149,7 +134,10 @@ export default function SignRecognitionScreen({ navigation, route }: Props) {
                     {signName(c.sign, lang)}
                   </AppText>
                   <Pressable
-                    onPress={() => setCaptured((prev) => prev.filter((_, at) => at !== i))}
+                    onPress={() => {
+                      if (i === captured.length - 1) setAlternatives([]);
+                      setCaptured((prev) => prev.filter((_, at) => at !== i));
+                    }}
                     hitSlop={10}
                     accessibilityRole="button"
                     accessibilityLabel={t('rec.remove', { name: signName(c.sign, lang) })}
@@ -159,6 +147,19 @@ export default function SignRecognitionScreen({ navigation, route }: Props) {
                 </View>
               ))}
             </View>
+            {alternatives.length > 0 ? (
+              <View style={[styles.chips, row, styles.center]}>
+                <AppText variant="caption">{t('rec.notRight', { name: signName(last.sign, lang) })}</AppText>
+                {alternatives.map((g) => (
+                  <Chip
+                    key={g.sign.id}
+                    label={`${signName(g.sign, lang)} · ${Math.round(g.confidence * 100)}%`}
+                    onPress={() => correctLast(g)}
+                    accessibilityHint={t('rec.notRightHint')}
+                  />
+                ))}
+              </View>
+            ) : null}
           </View>
         ) : null}
 
@@ -179,32 +180,26 @@ export default function SignRecognitionScreen({ navigation, route }: Props) {
 
       <Card style={styles.card}>
         <AppText variant="heading" accessibilityRole="header">
-          {t('rec.try')}
+          {t('rec.modelTitle')}
         </AppText>
         <AppText variant="bodySm" color={palette.ink2}>
-          {scanning ? t('rec.tryHint') : t('rec.tryPaused')}
+          {t('rec.modelNote')}
         </AppText>
         <View style={[styles.chips, row]}>
-          {vocabulary.slice(0, 12).map((sign) => (
-            <Chip key={sign.id} label={signName(sign, lang)} onPress={scanning ? () => perform(sign, 0.95) : undefined} />
+          {ASL_SIGNS.map((sign) => (
+            <Chip key={sign.id} label={signName(sign, lang)} />
           ))}
-          <Chip
-            label={t('rec.unclear')}
-            tone="dashed"
-            onPress={scanning ? () => perform(vocabulary[Math.floor(Math.random() * 12)], 0.62) : undefined}
-          />
         </View>
       </Card>
 
       <RepeatSignModal
         visible={!!unclear}
-        score={unclear?.confidence ?? 0}
-        threshold={threshold}
-        suggestions={unclear ? [unclear.sign, ...vocabulary.filter((v) => v.id !== unclear.sign.id).slice(0, 2)] : []}
+        suggestions={unclear?.map((g) => g.sign) ?? []}
         onRetry={() => setUnclear(null)}
-        onSelectSuggestion={(sign) => {
+        onSelectSuggestion={(sign: SignVocabularyItem) => {
+          const guess = unclear?.find((g) => g.sign.id === sign.id);
           setUnclear(null);
-          perform(sign, 0.95);
+          if (guess) accept(guess, unclear ?? []);
         }}
         onTypeInstead={() => {
           setUnclear(null);
@@ -218,13 +213,13 @@ export default function SignRecognitionScreen({ navigation, route }: Props) {
 
 const styles = themedStyles(() => ({
   content: { paddingTop: spacing.md },
-  headerAction: { minHeight: 44, paddingHorizontal: spacing.md },
   card: { gap: spacing.md },
   between: { alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   output: { gap: spacing.xs },
   english: { fontFamily: fonts.semibold, fontSize: 17, lineHeight: 24, color: palette.navyText },
   group: { gap: spacing.sm },
   chips: { flexWrap: 'wrap', gap: spacing.sm },
+  center: { alignItems: 'center' },
   token: {
     alignItems: 'center',
     gap: 6,

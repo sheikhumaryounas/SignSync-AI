@@ -1,0 +1,8 @@
+# Python 3.10 - 3.12. mediapipe 0.10.14 is the last version with the "solutions" API the pipeline uses.
+mediapipe==0.10.14
+numpy<2
+opencv-contrib-python<4.12
+onnxruntime
+fastapi
+uvicorn[standard]
+python-multipart

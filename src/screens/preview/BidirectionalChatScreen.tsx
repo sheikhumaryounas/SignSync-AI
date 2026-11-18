@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
 import { palette, radius, shadow, spacing, useDirection, themedStyles } from '../../theme';
 import { SignVocabularyItem } from '../../types';
 import { AppText, Button, Chip, FadeIn, IconBadge, IconButton, Input, SegmentedControl } from '../../components/ui';
@@ -10,7 +9,9 @@ import { useFeedback } from '../../context/FeedbackContext';
 import { useI18n } from '../../i18n';
 import { HeaderBar } from '../../components/preview/HeaderBar';
 import { SignAvatarComponent } from '../../components/preview/SignAvatarComponent';
-import { correctSignSequence, mapTextToSignSequence, signName, signNameEn } from '../../services/preview/aiEngine';
+import { SignCameraSheet } from '../../components/preview/SignCameraSheet';
+import { SignGuess } from '../../services/recognition/signApi';
+import { correctSignSequence, mapTextToSignSequence, signNameEn } from '../../services/preview/aiEngine';
 import { isUrduText, linesFor, timeLabel } from '../../utils/format';
 
 type Side = 'signer' | 'speaker';
@@ -37,8 +38,6 @@ const SAMPLE_SPEECH = {
 };
 
 export default function BidirectionalChatScreen() {
-  // Lives in the user tab bar and opens the root-stack camera screen, so it uses the untyped hook.
-  const navigation = useNavigation<any>();
   const { preferences, vocabulary, addSession, speakText } = usePreview();
   const { notify } = useFeedback();
   const { t, lang } = useI18n();
@@ -48,9 +47,12 @@ export default function BidirectionalChatScreen() {
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const [view, setView] = useState<'chat' | 'guide'>('chat');
   const [side, setSide] = useState<Side>('signer');
-  const [status, setStatus] = useState<'idle' | 'signing' | 'listening'>('idle');
+  const [status, setStatus] = useState<'idle' | 'listening'>('idle');
   const [draft, setDraft] = useState('');
   const [turns, setTurns] = useState<ChatTurn[]>(seedTurns);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  // Signs recognised by the camera model in this conversation, saved with their scores.
+  const [signed, setSigned] = useState<SignGuess[]>([]);
   const [guideSigns, setGuideSigns] = useState<SignVocabularyItem[]>(() => vocabulary.slice(0, 3));
 
   useEffect(
@@ -64,16 +66,13 @@ export default function BidirectionalChatScreen() {
     setTurns((prev) => [...prev, { ...turn, id: `turn_${Date.now()}`, at: new Date().toISOString() }]);
   };
 
-  const sendSign = (sign: SignVocabularyItem) => {
-    setStatus('signing');
-    timers.current.push(
-      setTimeout(() => {
-        const corrected = correctSignSequence([signNameEn(sign)]);
-        addTurn({ side: 'signer', textUrdu: corrected.urdu, textEnglish: corrected.english });
-        speakText(preferences.outputLanguage === 'english' ? corrected.english : corrected.urdu, { auto: true });
-        setStatus('idle');
-      }, 500)
-    );
+  // A sign recognised by the camera model becomes the signer's message, spoken for the hearing person.
+  const sendSign = (guess: SignGuess) => {
+    const { sign } = guess;
+    setSigned((prev) => [...prev, guess]);
+    const corrected = correctSignSequence([signNameEn(sign)]);
+    addTurn({ side: 'signer', textUrdu: corrected.urdu, textEnglish: corrected.english });
+    speakText(preferences.outputLanguage === 'english' ? corrected.english : corrected.urdu, { auto: true });
   };
 
   const sendText = () => {
@@ -106,8 +105,9 @@ export default function BidirectionalChatScreen() {
       inputText: turns.map((m) => m.textEnglish).join(' / '),
       outputTextUrdu: turns.map((m) => `${label(m.side)}: ${m.textUrdu}`).join('\n'),
       outputTextEnglish: turns.map((m) => `${label(m.side)}: ${m.textEnglish}`).join('\n'),
-      signSequence: guideSigns.map(signNameEn),
-      averageConfidence: 1,
+      signSequence: signed.length ? signed.map((g) => signNameEn(g.sign)) : guideSigns.map(signNameEn),
+      signConfidences: signed.length ? signed.map((g) => g.confidence) : undefined,
+      averageConfidence: signed.length ? signed.reduce((sum, g) => sum + g.confidence, 0) / signed.length : 1,
       duration: `${Math.max(1, Math.round((Date.now() - openedAt.current) / 1000))}s`,
       feedbackGiven: 'up',
     });
@@ -196,7 +196,7 @@ export default function BidirectionalChatScreen() {
           )}
           {status !== 'idle' ? (
             <AppText variant="caption" align="center" color={palette.ink2} accessibilityLiveRegion="polite">
-              {status === 'signing' ? t('chat.signing') : t('chat.listening')}
+              {t('chat.listening')}
             </AppText>
           ) : null}
         </ScrollView>
@@ -213,12 +213,7 @@ export default function BidirectionalChatScreen() {
             ]}
           />
           {side === 'signer' ? (
-            <View style={[styles.signs, row]}>
-              {vocabulary.slice(0, 6).map((sign) => (
-                <Chip key={sign.id} label={signName(sign, lang)} onPress={() => sendSign(sign)} />
-              ))}
-              <Chip label={t('chat.openCamera')} tone="teal" onPress={() => navigation.navigate('SignRecognition')} />
-            </View>
+            <Button title={t('chat.openCamera')} variant="teal" onPress={() => setCameraOpen(true)} />
           ) : (
             <View style={[styles.inputRow, row]}>
               <View style={styles.flex}>
@@ -243,6 +238,7 @@ export default function BidirectionalChatScreen() {
           )}
         </View>
       </KeyboardAvoidingView>
+      <SignCameraSheet visible={cameraOpen} onClose={() => setCameraOpen(false)} onSign={sendSign} />
     </SafeAreaView>
   );
 }
@@ -267,6 +263,5 @@ const styles = themedStyles(() => ({
     gap: spacing.md,
     boxShadow: shadow.bar,
   },
-  signs: { flexWrap: 'wrap', gap: spacing.sm },
   inputRow: { alignItems: 'center', gap: spacing.sm },
 }));

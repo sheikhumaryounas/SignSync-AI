@@ -9,8 +9,6 @@ import { signName } from '../../services/preview/aiEngine';
 
 interface RepeatSignModalProps {
   visible: boolean;
-  score: number;
-  threshold: number;
   suggestions: SignVocabularyItem[];
   onRetry: () => void;
   onSelectSuggestion: (sign: SignVocabularyItem) => void;
@@ -24,8 +22,9 @@ const tips: { icon: IconName; label: StringKey }[] = [
   { icon: 'timer-outline', label: 'rec.tipHold' },
 ];
 
-// Shown when recognition confidence falls below the threshold, so a low score never becomes output.
-export function RepeatSignModal({ visible, score, threshold, suggestions, onRetry, onSelectSuggestion, onTypeInstead, onDismiss }: RepeatSignModalProps) {
+// Shown when the server does not accept the answer: the sign is probably not one of the 20 the model
+// knows, or was unclear. Nothing is added to the output; signing again is the main action.
+export function RepeatSignModal({ visible, suggestions, onRetry, onSelectSuggestion, onTypeInstead, onDismiss }: RepeatSignModalProps) {
   const { t, lang } = useI18n();
   const { row } = useDirection();
 
@@ -37,10 +36,10 @@ export function RepeatSignModal({ visible, score, threshold, suggestions, onRetr
             <IconBadge icon="alert-circle-outline" tone="navy" />
             <View style={styles.flex}>
               <AppText variant="title" accessibilityRole="header">
-                {t('rec.repeatTitle')}
+                {t('rec.notRecognisedTitle')}
               </AppText>
               <AppText variant="bodySm" color={palette.ink2}>
-                {t('rec.repeatScore', { score: Math.round(score * 100), threshold: Math.round(threshold * 100) })}
+                {t('rec.notRecognisedBody')}
               </AppText>
             </View>
           </View>
@@ -57,19 +56,21 @@ export function RepeatSignModal({ visible, score, threshold, suggestions, onRetr
             ))}
           </View>
 
+
+          <Button title={t('rec.signAgain')} onPress={onRetry} />
+
           {suggestions.length > 0 ? (
             <View style={styles.group}>
-              <AppText variant="label">{t('rec.didYouMean')}</AppText>
+              <AppText variant="label">{t('rec.ifYouMeant')}</AppText>
               <View style={[styles.chips, row]}>
                 {suggestions.map((sign) => (
-                  <Chip key={sign.id} label={signName(sign, lang)} tone="teal" onPress={() => onSelectSuggestion(sign)} />
+                  <Chip key={sign.id} label={signName(sign, lang)}  onPress={() => onSelectSuggestion(sign)} />
                 ))}
               </View>
             </View>
           ) : null}
 
           <View style={styles.group}>
-            <Button title={t('rec.retry')} onPress={onRetry} />
             <View style={[styles.secondary, row]}>
               <Button title={t('rec.typeInstead')} variant="ghost" onPress={onTypeInstead} style={styles.flex} />
               <Button title={t('common.cancel')} variant="ghost" onPress={onDismiss} style={styles.flex} />

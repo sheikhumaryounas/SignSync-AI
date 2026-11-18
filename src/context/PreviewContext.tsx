@@ -10,7 +10,8 @@ import { useAuth } from './AuthContext';
 import { usePreferences } from './PreferencesContext';
 import { isUrduText } from '../utils/format';
 
-type LegacySession = Omit<CommunicationSession, 'id' | 'timestamp'>;
+// signConfidences: the model's score for each sign, in order (camera recognition only).
+type LegacySession = Omit<CommunicationSession, 'id' | 'timestamp'> & { signConfidences?: number[] };
 
 interface PreviewValue {
   preferences: UserPreference;
@@ -49,7 +50,10 @@ function toNewSession(s: LegacySession): NewSession {
         outputEn: s.outputTextEnglish,
         outputUr: s.outputTextUrdu,
         // Only camera recognition produces a real confidence score.
-        signSequence: s.signSequence.map((sign) => ({ sign: sign.toUpperCase(), confidence: s.modality === 'sign_to_text' ? s.averageConfidence : undefined })),
+        signSequence: s.signSequence.map((sign, i) => ({
+          sign: sign.toUpperCase(),
+          confidence: s.signConfidences?.[i] ?? (s.modality === 'sign_to_text' ? s.averageConfidence : undefined),
+        })),
         createdAt: started.toISOString(),
       },
     ],

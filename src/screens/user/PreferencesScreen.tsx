@@ -23,6 +23,7 @@ import { FeedbackChannel, useFeedback } from '../../context/FeedbackContext';
 import { apiErrorText, StringKey, useI18n } from '../../i18n';
 import { hasFeedbackChannel, PreferenceProfile, PreferenceSettings, sameSettings } from '../../services/api';
 import { OutputLanguage } from '../../types';
+import { SignServerSetting } from '../../components/preview/SignServerSetting';
 import { useThemeMode } from '../../context/ThemeContext';
 
 type ChannelKey = 'visualFeedback' | 'audioFeedback' | 'hapticFeedback';
@@ -236,6 +237,8 @@ export default function PreferencesScreen() {
           <AppText variant="caption">{t('prefs.profileHint')}</AppText>
         ) : null}
       </View>
+
+      <SignServerSetting />
 
       <ConfirmDialog
         visible={!!toDelete}

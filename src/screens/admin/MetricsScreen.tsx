@@ -10,6 +10,7 @@ import { apiErrorText, StringKey, useI18n } from '../../i18n';
 import { api, FlaggedLog, LATENCY_BUDGET_MS, MetricsSummary, ModelVersion } from '../../services/api';
 import { whenLabel } from '../../utils/format';
 import { latencyParts, pct, signed } from './metricsFormat';
+import { DeployedModelCard } from './DeployedModelCard';
 
 const RANGES = [7, 30, 90];
 const FLAGS_PREVIEW = 3;
@@ -42,6 +43,7 @@ export default function MetricsScreen() {
   const [flags, setFlags] = useState<FlaggedLog[]>([]);
   const [showAllFlags, setShowAllFlags] = useState(false);
   const [resolving, setResolving] = useState<FlaggedLog | null>(null);
+  const [modelRefresh, setModelRefresh] = useState(0);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -74,9 +76,10 @@ export default function MetricsScreen() {
   }, [accessToken, versionId, days, prevVersion, t]);
 
   // Pull down: re-read the figures and the flagged predictions.
-  const refreshControl = usePullRefresh(() =>
-    Promise.allSettled([refresh(), accessToken ? api.metrics.flagged(accessToken).then(setFlags) : Promise.resolve()])
-  );
+  const refreshControl = usePullRefresh(() => {
+    setModelRefresh((n) => n + 1);
+    return Promise.allSettled([refresh(), accessToken ? api.metrics.flagged(accessToken).then(setFlags) : Promise.resolve()]);
+  });
 
   useEffect(() => {
     refresh();
@@ -134,6 +137,7 @@ export default function MetricsScreen() {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={refreshControl}>
         <Stagger delay={120}>
+        <DeployedModelCard refreshKey={modelRefresh} />
         {error ? <Notice tone="error" message={error} /> : null}
         {summary?.stale ? <Notice tone="warning" message={t('metrics.stale')} /> : null}
         {summary?.example ? <Notice message={t('metrics.example')} /> : null}

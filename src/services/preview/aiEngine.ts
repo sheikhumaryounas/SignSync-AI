@@ -1,5 +1,6 @@
-import { SignVocabularyItem, SignToken } from '../../types';
+import { SignVocabularyItem } from '../../types';
 import { mockVocabulary } from './mockData';
+import { ASL_SIGNS } from '../recognition/aslSigns';
 
 // A vocabulary name can list synonyms ("Doctor / Physician"); the first one is the display name.
 export const signNameEn = (sign: SignVocabularyItem): string => sign.signNameEnglish.split('/')[0].trim();
@@ -7,130 +8,6 @@ export const signNameUr = (sign: SignVocabularyItem): string => sign.signNameUrd
 export const signName = (sign: SignVocabularyItem, lang: 'en' | 'ur'): string => (lang === 'ur' ? signNameUr(sign) : signNameEn(sign));
 export const signDescription = (sign: SignVocabularyItem, lang: 'en' | 'ur'): string =>
   lang === 'ur' ? sign.descriptionUrdu : sign.descriptionEnglish;
-
-export interface LandmarkPoint {
-  x: number;
-  y: number;
-  z?: number;
-  visibility?: number;
-}
-
-export interface MediaPipeFrame {
-  handLeft: LandmarkPoint[];
-  handRight: LandmarkPoint[];
-  poseSkeleton: LandmarkPoint[];
-  faceMesh: LandmarkPoint[];
-  edgeLatencyMs: number;
-}
-
-/**
- * Generates simulated MediaPipe landmarks for edge preprocessing visualization
- */
-export const generateSimulatedLandmarks = (gestureIndex: number = 0): MediaPipeFrame => {
-  const t = Date.now() / 300 + gestureIndex;
-  
-  // Right hand (21 keypoints standard)
-  const handRight: LandmarkPoint[] = [];
-  const wristX = 0.55 + Math.sin(t * 0.8) * 0.04;
-  const wristY = 0.65 + Math.cos(t * 0.8) * 0.03;
-  handRight.push({ x: wristX, y: wristY }); // 0: wrist
-
-  // 5 fingers (4 joints each: 1-4 thumb, 5-8 index, 9-12 middle, 13-16 ring, 17-20 pinky)
-  const fingerBases = [
-    { dx: -0.06, dy: -0.04 },
-    { dx: -0.03, dy: -0.12 },
-    { dx: 0.0, dy: -0.14 },
-    { dx: 0.03, dy: -0.12 },
-    { dx: 0.06, dy: -0.09 },
-  ];
-
-  fingerBases.forEach((base, fingerIdx) => {
-    let currX = wristX + base.dx;
-    let currY = wristY + base.dy;
-    handRight.push({ x: currX, y: currY });
-
-    for (let j = 1; j <= 3; j++) {
-      const curl = Math.sin(t + fingerIdx) * 0.015;
-      currX += (base.dx / 2.5) + curl;
-      currY += (base.dy / 2.5);
-      handRight.push({ x: currX, y: currY });
-    }
-  });
-
-  // Left hand (21 keypoints standard)
-  const handLeft: LandmarkPoint[] = [];
-  const lWristX = 0.35 - Math.sin(t * 0.7) * 0.03;
-  const lWristY = 0.68 + Math.cos(t * 0.7) * 0.02;
-  handLeft.push({ x: lWristX, y: lWristY });
-
-  fingerBases.forEach((base, fingerIdx) => {
-    let currX = lWristX - base.dx;
-    let currY = lWristY + base.dy;
-    handLeft.push({ x: currX, y: currY });
-
-    for (let j = 1; j <= 3; j++) {
-      const curl = Math.cos(t + fingerIdx) * 0.015;
-      currX -= (base.dx / 2.5) + curl;
-      currY += (base.dy / 2.5);
-      handLeft.push({ x: currX, y: currY });
-    }
-  });
-
-  // Pose skeleton (Key torso & shoulders)
-  const poseSkeleton: LandmarkPoint[] = [
-    { x: 0.5, y: 0.32 }, // 0: Nose
-    { x: 0.42, y: 0.42 }, // 11: Left Shoulder
-    { x: 0.58, y: 0.42 }, // 12: Right Shoulder
-    { x: 0.36, y: 0.58 }, // 13: Left Elbow
-    { x: 0.64, y: 0.58 }, // 14: Right Elbow
-    { x: lWristX, y: lWristY }, // 15: Left Wrist
-    { x: wristX, y: wristY }, // 16: Right Wrist
-  ];
-
-  // Face mesh highlights (Forehead, cheeks, chin, lips, eyes)
-  const faceMesh: LandmarkPoint[] = [
-    { x: 0.5, y: 0.22 }, // Forehead
-    { x: 0.45, y: 0.28 }, // Left eye
-    { x: 0.55, y: 0.28 }, // Right eye
-    { x: 0.5, y: 0.33 }, // Nose tip
-    { x: 0.47, y: 0.38 }, // Left mouth corner
-    { x: 0.53, y: 0.38 }, // Right mouth corner
-    { x: 0.5, y: 0.40 }, // Lower lip
-    { x: 0.5, y: 0.44 }, // Chin
-  ];
-
-  return {
-    handLeft,
-    handRight,
-    poseSkeleton,
-    faceMesh,
-    edgeLatencyMs: Math.floor(14 + Math.random() * 8), // ~18ms edge extraction
-  };
-};
-
-/**
- * Recognizes a sign from the simulated landmark sequence
- */
-export const recognizeSignLandmarks = (
-  targetSign?: SignVocabularyItem,
-  forceConfidence?: number
-): { sign: SignVocabularyItem; confidence: number; inferenceTimeMs: number } => {
-  const chosenSign = targetSign || mockVocabulary[Math.floor(Math.random() * mockVocabulary.length)];
-  
-  // Calculate confidence score (mostly high, occasionally testing low)
-  let confidence = forceConfidence !== undefined 
-    ? forceConfidence 
-    : (chosenSign.confidenceAverage - 0.05 + Math.random() * 0.08);
-
-  // Bound to 0.0 - 0.99
-  confidence = Math.max(0.45, Math.min(0.99, parseFloat(confidence.toFixed(2))));
-
-  return {
-    sign: chosenSign,
-    confidence,
-    inferenceTimeMs: Math.floor(22 + Math.random() * 12), // ~28ms backend inference
-  };
-};
 
 /**
  * Language Correction API Engine
@@ -160,10 +37,19 @@ export const correctSignSequence = (signTokens: string[]): { urdu: string; engli
   if (only('food')) return sentence('مجھے کھانا چاہیے۔', 'I need food.');
   if (only('pain')) return sentence('مجھے تکلیف ہے۔', 'I am in pain.');
   if (only('medicine')) return sentence('مجھے دوا چاہیے۔', 'I need medicine.');
+  // Signs from the camera model (ASL-20).
+  if (has('drink', 'water')) return sentence('مجھے پانی پینا ہے۔', 'I want to drink water.');
+  if (has('where', 'home')) return sentence('گھر کہاں ہے؟', 'Where is home?');
+  if (has('wait', 'please')) return sentence('براہ کرم انتظار کریں۔', 'Please wait.');
+  if (only('hungry')) return sentence('مجھے بھوک لگی ہے۔', 'I am hungry.');
+  if (only('sick')) return sentence('میں بیمار ہوں۔', 'I am sick.');
+  if (only('water')) return sentence('مجھے پانی چاہیے۔', 'I need water.');
+  if (only('sleep')) return sentence('مجھے نیند آ رہی ہے۔', 'I am sleepy.');
+  if (only('call on phone')) return sentence('مجھے فون کرنا ہے۔', 'I need to make a phone call.');
 
   // No known pattern: list the signs in the order they were made.
   const urduWords = signTokens.map(token => {
-    const found = mockVocabulary.find(v => signNameEn(v).toLowerCase() === token.toLowerCase().trim());
+    const found = [...mockVocabulary, ...ASL_SIGNS].find(v => signNameEn(v).toLowerCase() === token.toLowerCase().trim());
     return found ? signNameUr(found) : token;
   });
 

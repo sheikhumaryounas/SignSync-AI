@@ -1,0 +1,29 @@
+{
+  "name": "ASL-20 Conformer (hands + face/body)",
+  "language": "ASL",
+  "testAccuracy": 0.853,
+  "testSigners": 4,
+  "trainedOn": "Kaggle Google Isolated Sign Language Recognition (asl-signs), 21 signers",
+  "perSign": [
+    { "label": "hello", "accuracy": 0.97 },
+    { "label": "bye", "accuracy": 0.96 },
+    { "label": "home", "accuracy": 0.95 },
+    { "label": "time", "accuracy": 0.95 },
+    { "label": "sick", "accuracy": 0.92 },
+    { "label": "no", "accuracy": 0.91 },
+    { "label": "water", "accuracy": 0.91 },
+    { "label": "where", "accuracy": 0.91 },
+    { "label": "callonphone", "accuracy": 0.89 },
+    { "label": "thankyou", "accuracy": 0.88 },
+    { "label": "sleep", "accuracy": 0.87 },
+    { "label": "drink", "accuracy": 0.86 },
+    { "label": "hungry", "accuracy": 0.85 },
+    { "label": "yes", "accuracy": 0.84 },
+    { "label": "see", "accuracy": 0.80 },
+    { "label": "happy", "accuracy": 0.77 },
+    { "label": "wait", "accuracy": 0.74 },
+    { "label": "please", "accuracy": 0.72 },
+    { "label": "fine", "accuracy": 0.69 },
+    { "label": "sad", "accuracy": 0.68 }
+  ]
+}
