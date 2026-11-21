@@ -1,7 +1,8 @@
 import { SignVocabularyItem } from '../../types';
 
-// The 20 ASL signs the Conformer model (server/pipeline/asl20_conformer_face) recognises.
-// `label` is the model's class name; the rest is what the app shows for it.
+// The 20 ASL signs recognised by the Conformer model.
+// Each label represents a model class and maps to the English and Urdu information displayed in the app.
+// Keep these labels consistent with the model's output classes.
 const SIGNS: {
   label: string;
   en: string;
